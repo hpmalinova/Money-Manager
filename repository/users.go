@@ -58,6 +58,22 @@ func (u *UserRepoMysql) FindByID(id int) (*model.User, error) {
 	return user, nil
 }
 
+func (u *UserRepoMysql) FindNamesByIDs(ids []int) ([]string, error) {
+	usernames := []string{}
+
+	for _, id := range ids {
+		statement := "SELECT username FROM users WHERE id= ?"
+		var username string
+		err := u.db.QueryRow(statement, id).Scan(&username)
+		if err != nil {
+			return nil, err
+		}
+		usernames = append(usernames, username)
+	}
+
+	return usernames, nil
+}
+
 func (u UserRepoMysql) FindByUsername(username string) (*model.User, error) {
 	user := &model.User{}
 	statement := "SELECT id, username, password FROM users WHERE username= ?"

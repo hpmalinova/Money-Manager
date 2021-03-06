@@ -8,3 +8,11 @@ type UserRepo interface {
 	FindByUsername(username string) (*model.User, error)
 	Create(user *model.User) (*model.User, error)
 }
+
+type FriendshipRepo interface {
+	Add(friendship *model.Friendship) error
+	Find(start, count, userID int) ([]int, error)
+	FindPending(start, count, userID int) ([]int, error)
+	AcceptInvite(userOne, userTwo, actionUser int) error
+	DeclineInvite(userOne, userTwo, actionUser int) error
+}

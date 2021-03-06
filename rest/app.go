@@ -27,14 +27,17 @@ import (
 
 type App struct {
 	Router *mux.Router
-	Users  contract.UserRepo
 
-	Validator *validator.Validate
+	Users      contract.UserRepo
+	Friendship contract.FriendshipRepo
+
+	Validator  *validator.Validate
 	Translator ut.Translator
 }
 
 func (a *App) Init(user, password, dbname string) {
-	a.Users = repository.NewUserRepoMysql(user, password, dbname)
+	a.Users = repository.NewUserRepoMysql(user, password, dbname) // TODO one db connection?
+	a.Friendship = repository.NewFriendRepoMysql(user, password, dbname)
 
 	a.Validator = validator.New()
 	eng := en.New()
@@ -67,8 +70,16 @@ func (a *App) initializeRoutes() {
 	s.Use(JwtVerify)
 	s.HandleFunc("/users", a.getUsers).Methods(http.MethodGet)
 	s.HandleFunc("/users/{id:[0-9]+}", a.getUser).Methods(http.MethodGet)
+
+	s.HandleFunc("/friends", a.addFriend).Methods(http.MethodPost)
+	s.HandleFunc("/friends/{id:[0-9]+}", a.getFriends).Methods(http.MethodGet)
+	s.HandleFunc("/friends/{id:[0-9]+}/pending", a.getPending).Methods(http.MethodGet)
+	s.HandleFunc("/friends/{id:[0-9]+}/pending/{friend-id:[0-9]+}/accept", a.acceptInvite).Methods(http.MethodPut) //todo uri + put
+	s.HandleFunc("/friends/{id:[0-9]+}/pending/{friend-id:[0-9]+}/accept", a.declineInvite).Methods(http.MethodPut) //todo
+
 }
 
+// Users //
 func (a *App) login(w http.ResponseWriter, r *http.Request) {
 	userCredentials := &model.UserLogin{}
 	err := json.NewDecoder(r.Body).Decode(userCredentials)
@@ -99,8 +110,8 @@ func (a *App) checkCredentials(w http.ResponseWriter, username, password string)
 	}
 
 	claims := &model.UserToken{
-		UserID: string(user.ID),
-		Username:   user.Username,
+		UserID:   string(user.ID),
+		Username: user.Username,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expiresAt,
 			//Issuer:    "test",
@@ -128,12 +139,16 @@ func (a *App) register(w http.ResponseWriter, r *http.Request) {
 	user := &model.User{}
 
 	// r.Body: {"username":"peter", "password": "123"}
-	decoder := json.NewDecoder(r.Body)
-
-	if err := decoder.Decode(user); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(user); err != nil {
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
+
+	//decoder := json.NewDecoder(r.Body)
+	//if err := decoder.Decode(user); err != nil {
+	//	respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+	//	return
+	//}
 
 	// Validate User struct
 	err := a.Validator.Struct(user)
@@ -177,8 +192,8 @@ func (a *App) getUsers(w http.ResponseWriter, r *http.Request) {
 
 	const (
 		minOffset = 0
-		minLimit = 1
-		maxLimit = 10
+		minLimit  = 1
+		maxLimit  = 10
 	)
 
 	start--
@@ -223,3 +238,189 @@ func (a *App) getUser(w http.ResponseWriter, r *http.Request) {
 
 	respondWithJSON(w, http.StatusOK, user)
 }
+
+// Friendship //
+
+func (a *App) addFriend(w http.ResponseWriter, r *http.Request) {
+	addFriendModel := &model.AddFriend{}
+	err := json.NewDecoder(r.Body).Decode(addFriendModel)
+
+	if err != nil {
+		fmt.Printf("Error adding friend %v: %v", addFriendModel.FriendName, err)
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		//var resp = map[string]interface{}{"status": false, "message": "Invalid request"}
+		//_ = json.NewEncoder(w).Encode(resp)
+		return
+	}
+
+	// Create friendship model:
+
+	user, err := a.Users.FindByUsername(addFriendModel.FriendName)
+	if err != nil {
+		message := fmt.Sprintf("There is no user: %v", addFriendModel.FriendName)
+		respondWithError(w, http.StatusBadRequest, message)
+	}
+
+	userOne, userTwo := addFriendModel.ActionUserID, user.ID
+
+	// userOne is the user with the lowest ID
+	if addFriendModel.ActionUserID > user.ID {
+		userOne, userTwo = user.ID, addFriendModel.ActionUserID
+	}
+
+	friendship := &model.Friendship{
+		UserOne:    userOne,
+		UserTwo:    userTwo,
+		ActionUser: addFriendModel.ActionUserID,
+	}
+
+	if err := a.Friendship.Add(friendship); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+	}
+	//w.WriteHeader(http.StatusCreated)
+}
+
+func (a *App) getFriends(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	count, err := strconv.Atoi(r.FormValue("count"))
+	if err != nil && r.FormValue("count") != "" {
+		respondWithError(w, http.StatusBadRequest, "Invalid request count parameter")
+		return
+	}
+	start, err := strconv.Atoi(r.FormValue("start"))
+	if err != nil && r.FormValue("start") != "" {
+		respondWithError(w, http.StatusBadRequest, "Invalid request start parameter")
+		return
+	}
+
+	const (
+		minOffset = 0
+		minLimit  = 1
+		maxLimit  = 10
+	)
+
+	start--
+	if count > maxLimit || count < minLimit {
+		count = maxLimit
+	}
+	if start < minOffset {
+		start = minOffset
+	}
+
+	// TODO
+	friendIDs, err := a.Friendship.Find(start, count, userID)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// TODO convert to usernames
+	//a.Users.
+	respondWithJSON(w, http.StatusOK, friendIDs)
+}
+
+func (a *App) getPending(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	count, err := strconv.Atoi(r.FormValue("count"))
+	if err != nil && r.FormValue("count") != "" {
+		respondWithError(w, http.StatusBadRequest, "Invalid request count parameter")
+		return
+	}
+	start, err := strconv.Atoi(r.FormValue("start"))
+	if err != nil && r.FormValue("start") != "" {
+		respondWithError(w, http.StatusBadRequest, "Invalid request start parameter")
+		return
+	}
+
+	const (
+		minOffset = 0
+		minLimit  = 1
+		maxLimit  = 10
+	)
+
+	start--
+	if count > maxLimit || count < minLimit {
+		count = maxLimit
+	}
+	if start < minOffset {
+		start = minOffset
+	}
+
+	/////////////////////////////////////////////////////////////////
+
+	// TODO
+	friendIDs, err := a.Friendship.FindPending(start, count, userID)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// TODO convert to usernames
+	//a.Users.
+	respondWithJSON(w, http.StatusOK, friendIDs)
+}
+
+func (a *App) acceptInvite(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+	friendID, err := strconv.Atoi(vars["friend-id"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid friend ID")
+		return
+	}
+
+	userOne, userTwo := userID, friendID
+
+	// userOne is the user with the lowest ID
+	if userID > friendID {
+		userOne, userTwo = friendID, userID
+	}
+
+	if err :=	a.Friendship.AcceptInvite(userOne, userTwo, userID); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+}
+
+func (a *App) declineInvite(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+	friendID, err := strconv.Atoi(vars["friend-id"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid friend ID")
+		return
+	}
+
+	userOne, userTwo := userID, friendID
+
+	// userOne is the user with the lowest ID
+	if userID > friendID {
+		userOne, userTwo = friendID, userID
+	}
+
+	if err :=	a.Friendship.DeclineInvite(userOne, userTwo, userID); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+}
+

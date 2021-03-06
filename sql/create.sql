@@ -8,3 +8,16 @@ CREATE TABLE users (
     password VARCHAR(256) NOT NULL,
     UNIQUE (username)
 );
+
+-- The action_user_id represent the id of the user who has performed the most recent status field update.
+-- user_one_id is smaller than user_two_id
+CREATE TABLE friendship (
+    user_one_id INT NOT NULL,
+    user_two_id INT NOT NULL,
+    status enum('pending','accepted','declined') NOT NULL,
+    action_user_id INT NOT NULL,
+    UNIQUE (user_one_id, user_two_id)
+);
+
+
+
