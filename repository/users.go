@@ -23,7 +23,7 @@ func NewUserRepoMysql(user, password, dbname string) *UserRepoMysql {
 	return repo
 }
 
-func (u UserRepoMysql) Find(start, count int) ([]model.User, error) {
+func (u *UserRepoMysql) Find(start, count int) ([]model.User, error) {
 	statement := "SELECT id, username, password FROM users LIMIT ? OFFSET ?"
 	rows, err := u.db.Query(statement, count, start)
 	if err != nil {
@@ -74,7 +74,7 @@ func (u *UserRepoMysql) FindNamesByIDs(ids []int) ([]string, error) {
 	return usernames, nil
 }
 
-func (u UserRepoMysql) FindByUsername(username string) (*model.User, error) {
+func (u *UserRepoMysql) FindByUsername(username string) (*model.User, error) {
 	user := &model.User{}
 	statement := "SELECT id, username, password FROM users WHERE username= ?"
 	err := u.db.QueryRow(statement, username).Scan(&user.ID, &user.Username, &user.Password)

@@ -16,3 +16,8 @@ type FriendshipRepo interface {
 	AcceptInvite(userOne, userTwo, actionUser int) error
 	DeclineInvite(userOne, userTwo, actionUser int) error
 }
+
+type GroupRepo interface {
+	CreateGroup(name string, participants []int) error
+	Find(start, count, ownerID int) ([]model.Group, error)
+}

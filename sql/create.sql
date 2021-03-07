@@ -19,5 +19,14 @@ CREATE TABLE friendship (
     UNIQUE (user_one_id, user_two_id)
 );
 
+CREATE TABLE groups (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name  VARCHAR (32) NOT NULL,
+    participant_id INT NOT NULL,
+    UNIQUE (name, participant_id)
+);
+
+
+
 
 
