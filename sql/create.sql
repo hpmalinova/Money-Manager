@@ -28,7 +28,8 @@ CREATE TABLE groups (
 
 CREATE TABLE categories (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    name  VARCHAR (32) NOT NULL
+    c_type enum('expense','income') NOT NULL,
+    name  VARCHAR (32) NOT NULL,
     UNIQUE(name)
 );
 

@@ -29,7 +29,7 @@ func NewCategoryRepoMysql(user, password, dbname string) *CategoryRepoMysql {
 }
 
 func (g *CategoryRepoMysql) Find() ([]model.Category, error) {
-	statement := `SELECT id, name FROM categories`
+	statement := `SELECT id, c_type, name FROM categories`
 
 	rows, err := g.db.Query(statement)
 	if err != nil {
@@ -40,7 +40,7 @@ func (g *CategoryRepoMysql) Find() ([]model.Category, error) {
 	categories := []model.Category{}
 	for rows.Next() {
 		var category model.Category
-		err := rows.Scan(&category.ID, &category.Name)
+		err := rows.Scan(&category.ID, &category.CType, &category.Name)
 		if err != nil {
 			return nil, err
 		}
