@@ -2,6 +2,7 @@ DROP DATABASE money_manager;
 CREATE DATABASE money_manager;
 USE money_manager;
 
+-- todo add wallet
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username  VARCHAR (32) NOT NULL,
@@ -33,5 +34,28 @@ CREATE TABLE categories (
     UNIQUE(name)
 );
 
+-- todo foreign key? - uid/category_id
+-- todo add Date
+CREATE TABLE money_history (
+    uid INT NOT NULL,
+    amount INT NOT NULL,
+    category_id INT NOT NULL,
+    description  VARCHAR (128)
+);
 
+CREATE TABLE debt_status (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    status enum('ongoing','pending') NOT NULL,
+    amount INT NOT NULL
+);
 
+-- todo foreign key? - creditor/debtor/category_id/status_id
+-- todo delete status when debt is payed
+CREATE TABLE debts (
+    creditor INT NOT NULL,
+    debtor INT NOT NULL,
+    amount INT NOT NULL,
+    category_id INT NOT NULL,
+    description  VARCHAR (128),
+    status_id INT NOT NULL
+);
