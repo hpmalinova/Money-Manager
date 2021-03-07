@@ -31,7 +31,7 @@ func NewGroupRepoMysql(user, password, dbname string) *GroupRepoMysql {
 	return repo
 }
 
-func (g *GroupRepoMysql) CreateGroup(name string, participants []int) error {
+func (g *GroupRepoMysql) Create(name string, participants []int) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 

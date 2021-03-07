@@ -26,7 +26,11 @@ CREATE TABLE groups (
     UNIQUE (name, participant_id)
 );
 
-
+CREATE TABLE categories (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name  VARCHAR (32) NOT NULL
+    UNIQUE(name)
+);
 
 
 

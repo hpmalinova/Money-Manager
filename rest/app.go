@@ -31,7 +31,8 @@ type App struct {
 
 	Users      contract.UserRepo
 	Friendship contract.FriendshipRepo
-	Group      contract.GroupRepo
+	Groups     contract.GroupRepo
+	Categories contract.CategoryRepo
 
 	Validator  *validator.Validate
 	Translator ut.Translator
@@ -42,7 +43,8 @@ func (a *App) Init(user, password, dbname string) {
 	// newrepo(&db) --> repo.db = db
 	a.Users = repository.NewUserRepoMysql(user, password, dbname) // TODO one db connection?
 	a.Friendship = repository.NewFriendRepoMysql(user, password, dbname)
-	a.Group = repository.NewGroupRepoMysql(user, password, dbname)
+	a.Groups = repository.NewGroupRepoMysql(user, password, dbname)
+	a.Categories = repository.NewCategoryRepoMysql(user, password, dbname)
 
 	a.Validator = validator.New()
 	eng := en.New()
@@ -85,6 +87,9 @@ func (a *App) initializeRoutes() {
 	s.HandleFunc("/groups", a.addGroup).Methods(http.MethodPost)
 	s.HandleFunc("/groups/{id:[0-9]+}", a.getGroups).Methods(http.MethodGet)
 	//s.HandleFunc("/groups/{id:[0-9]+}/split", a.payForGroup).Methods(http.MethodPost) // TODO split money between group members
+
+	s.HandleFunc("/categories", a.getCategories).Methods(http.MethodGet)
+
 }
 
 // Users //
@@ -457,7 +462,7 @@ func (a *App) addGroup(w http.ResponseWriter, r *http.Request) {
 	// todo convert usernames to uids
 	participants := []int{}
 
-	if err := a.Group.CreateGroup(createGroupModel.Name, participants); err != nil {
+	if err := a.Groups.Create(createGroupModel.Name, participants); err != nil {
 		prefix := "Bad Request: "
 		if strings.HasPrefix(err.Error(), prefix) {
 			respondWithError(w, http.StatusBadRequest, strings.TrimPrefix(err.Error(), prefix))
@@ -504,7 +509,7 @@ func (a *App) getGroups(w http.ResponseWriter, r *http.Request) {
 		start = minOffset
 	}
 
-	groups, err := a.Group.Find(start, count, userID)
+	groups, err := a.Groups.Find(start, count, userID)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -512,3 +517,17 @@ func (a *App) getGroups(w http.ResponseWriter, r *http.Request) {
 
 	respondWithJSON(w, http.StatusOK, groups)
 }
+
+// Categories //
+
+func (a *App) getCategories(w http.ResponseWriter, r *http.Request) {
+	categories, err := a.Categories.Find()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, categories)
+}
+
+// Debt //

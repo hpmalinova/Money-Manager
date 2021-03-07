@@ -18,6 +18,10 @@ type FriendshipRepo interface {
 }
 
 type GroupRepo interface {
-	CreateGroup(name string, participants []int) error
+	Create(name string, participants []int) error
 	Find(start, count, ownerID int) ([]model.Group, error)
+}
+
+type CategoryRepo interface {
+	Find() ([]model.Category, error)
 }
