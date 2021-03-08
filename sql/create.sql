@@ -59,3 +59,4 @@ CREATE TABLE debts (
     description  VARCHAR (128),
     status_id INT NOT NULL
 );
+

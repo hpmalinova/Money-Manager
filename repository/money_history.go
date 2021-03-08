@@ -64,7 +64,6 @@ func (h *HistoryRepoMysql) PayWithDebt(debt *model.DebtHistory) error {
 	return h.moneyTransfer(&debt.History, description)
 }
 
-
 func (h *HistoryRepoMysql) moneyTransfer(history *model.History, description string) error {
 	statement := "INSERT INTO money_history(uid, amount, category_id, description) VALUES(?, ?, ?, ?)"
 	_, err := h.db.Exec(statement, history.UserID, history.Amount, history.CategoryID, description)
