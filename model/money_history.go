@@ -7,7 +7,12 @@ type History struct {
 	Description string `json:"description,omitempty"`
 }
 
-type Loan struct {
+type LoanHistory struct {
 	DebtorID int `json:"debtorID" validate:"numeric,gte=0"`
+	History
+}
+
+type DebtHistory struct {
+	CreditorID int `json:"creditorID" validate:"numeric,gte=0"`
 	History
 }

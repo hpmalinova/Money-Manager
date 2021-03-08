@@ -35,17 +35,17 @@ func (h *HistoryRepoMysql) Pay(history *model.History) error {
 	return nil
 }
 
-func (h *HistoryRepoMysql) GiveLoan(loan *model.Loan) error {
+// I gave 50lv to George for "Happy"
+// Category: Expense - LOAN
+func (h *HistoryRepoMysql) GiveLoan(loan *model.LoanHistory) error {
 	description := "Loan for" + strconv.Itoa(loan.DebtorID) + loan.Description
-	//statement := "INSERT INTO money_history(uid, amount, category_id, description) VALUES(?, ?, ?, ?)"
-	//_, err := h.db.Exec(statement, loan.UserID, loan.Amount, loan.CategoryID, description)
-	//if err != nil {
-	//	return err
-	//}
-	return h.moneyTransfer(loan, description)
+
+	return h.moneyTransfer(&loan.History, description)
 }
 
-func (h *HistoryRepoMysql) ReceiveDebt(loan *model.Loan) error {
+// George repaid 50lv for "Happy"
+// Category: Income - REPAY
+func (h *HistoryRepoMysql) ReceiveDebt(loan *model.LoanHistory) error {
 	description := "Repay from" + strconv.Itoa(loan.DebtorID) + loan.Description
 	//statement := "INSERT INTO money_history(uid, amount, category_id, description) VALUES(?, ?, ?, ?)"
 	//_, err := h.db.Exec(statement, loan.UserID, loan.Amount, loan.CategoryID, description)
@@ -53,13 +53,21 @@ func (h *HistoryRepoMysql) ReceiveDebt(loan *model.Loan) error {
 	//	return err
 	//}
 
-	return h.moneyTransfer(loan, description)
+	return h.moneyTransfer(&loan.History, description)
 }
 
-func (h *HistoryRepoMysql) moneyTransfer(loan *model.Loan, description string) error {
-	//description := "Repay from" + strconv.Itoa(loan.DebtorID) + loan.Description
+// George paid 50lv for "Happy" with Peter's money
+// Category: Expense - FOOD
+func (h *HistoryRepoMysql) PayWithDebt(debt *model.DebtHistory) error {
+	description := "Debt from" + strconv.Itoa(debt.CreditorID) + debt.Description
+
+	return h.moneyTransfer(&debt.History, description)
+}
+
+
+func (h *HistoryRepoMysql) moneyTransfer(history *model.History, description string) error {
 	statement := "INSERT INTO money_history(uid, amount, category_id, description) VALUES(?, ?, ?, ?)"
-	_, err := h.db.Exec(statement, loan.UserID, loan.Amount, loan.CategoryID, description)
+	_, err := h.db.Exec(statement, history.UserID, history.Amount, history.CategoryID, description)
 	if err != nil {
 		return err
 	}
