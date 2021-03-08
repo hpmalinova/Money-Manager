@@ -33,6 +33,7 @@ type App struct {
 	Friendship contract.FriendshipRepo
 	Groups     contract.GroupRepo
 	Categories contract.CategoryRepo
+	History    contract.HistoryRepo
 
 	Validator  *validator.Validate
 	Translator ut.Translator
@@ -45,6 +46,7 @@ func (a *App) Init(user, password, dbname string) {
 	a.Friendship = repository.NewFriendRepoMysql(user, password, dbname)
 	a.Groups = repository.NewGroupRepoMysql(user, password, dbname)
 	a.Categories = repository.NewCategoryRepoMysql(user, password, dbname)
+	a.History = repository.NewHistoryRepoMysql(user, password, dbname)
 
 	a.Validator = validator.New()
 	eng := en.New()

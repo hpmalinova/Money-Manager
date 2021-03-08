@@ -25,3 +25,9 @@ type GroupRepo interface {
 type CategoryRepo interface {
 	Find() ([]model.Category, error)
 }
+
+type HistoryRepo interface {
+	Pay(history *model.History) error
+	GiveLoan(loan *model.Loan) error
+	ReceiveDebt(loan *model.Loan) error
+}
