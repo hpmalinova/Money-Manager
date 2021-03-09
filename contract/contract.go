@@ -23,7 +23,10 @@ type GroupRepo interface {
 }
 
 type CategoryRepo interface {
-	Find() ([]model.Category, error)
+	FindByName(categoryName string) (*model.Category, error)
+	FindExpenses() ([]model.Category, error)
+	FindIncomes() ([]model.Category, error)
+	FindAll() ([]model.Category, error)
 }
 
 type HistoryRepo interface {
