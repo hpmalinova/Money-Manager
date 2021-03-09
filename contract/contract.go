@@ -34,5 +34,5 @@ type PaymentRepo interface {
 	Pay(h *model.History) error
 	Earn(h *model.History) error
 	GiveLoan(t *model.Transfer) error
-	Split(s *model.Split) error
+	Split(t *model.Transfer) error
 }
