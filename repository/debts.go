@@ -31,11 +31,6 @@ func NewDebtRepoMysql(user, password, dbname string) *DebtRepoMysql {
 	return repo
 }
 
-const (
-	ongoingStatus = "ongoing"
-	pendingStatus = "pending"
-)
-
 func (d *DebtRepoMysql) Add(debt *model.DebtAndLoan) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
@@ -56,7 +51,7 @@ func (d *DebtRepoMysql) Add(debt *model.DebtAndLoan) error {
 	defer tx.Rollback()
 
 	// Add Status
-	statement := "INSERT INTO debt_status(status, amount) VALUES(?, ?, ?)"
+	statement := "INSERT INTO debt_status(status, amount) VALUES(?, ?)"
 	result, err := d.db.Exec(statement, ongoingStatus, debt.Amount)
 	if err != nil {
 		return err

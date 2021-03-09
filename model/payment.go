@@ -7,15 +7,22 @@ type Pay struct {
 	Description  string `json:"description,omitempty"`
 }
 
-type GiveLoan struct {
+type Transfer struct {
+	CreditorID int `json:"debtorID" validate:"numeric,gte=0"`
+	LoanID     int `json:"loanID" validate:"numeric,gte=0"`
+	DebtID     int `json:"loanID" validate:"numeric,gte=0"`
+	GiveTo
+}
+
+type GiveTo struct {
 	DebtorID    int    `json:"debtorID" validate:"numeric,gte=0"`
 	Amount      int    `json:"amount" validate:"numeric,gte=0"`
 	Description string `json:"description,omitempty"`
 }
 
-type Split struct {
+type Give struct {
 	CategoryName string `json:"categoryName" validate:"required,min=3,max=32"`
-	GiveLoan
+	GiveTo
 }
 
 type RepayRequest struct {
