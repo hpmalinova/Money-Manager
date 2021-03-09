@@ -286,7 +286,7 @@ func (p *PaymentRepoMysql) Split(t *model.Transfer) error {
 	return nil
 }
 
-func (p *PaymentRepoMysql) FindActiveDebts(debtorID int) ([]model.Debt, error) {
+func (p *PaymentRepoMysql) FindActiveDebts(debtorID int) ([]model.DebtExt, error) {
 	statement := `SELECT d.status_id, d.creditor, d.amount, d.description, d.category 
 					FROM debts AS d
 					INNER JOIN debt_status AS s
@@ -298,9 +298,9 @@ func (p *PaymentRepoMysql) FindActiveDebts(debtorID int) ([]model.Debt, error) {
 	}
 	defer rows.Close()
 
-	debts := []model.Debt{}
+	debts := []model.DebtExt{}
 	for rows.Next() {
-		var debt model.Debt
+		var debt model.DebtExt
 		err := rows.Scan(&debt.StatusID, &debt.CreditorID, &debt.Amount, &debt.Description, &debt.CategoryName)
 		if err != nil {
 			return nil, err
@@ -385,4 +385,60 @@ func (p *PaymentRepoMysql) RequestRepay(debtID, amount int) error {
 		return errors.New(msg)
 	}
 	return nil
+}
+
+func (p *PaymentRepoMysql) FindPendingDebts(debtorID int) ([]model.Debt, error) {
+	statement := `SELECT d.creditor, s.amount, d.description 
+					FROM debts AS d
+					INNER JOIN debt_status AS s
+						ON d.status_id = s.id
+					WHERE d.debtor = ? AND s.status=?`
+	rows, err := p.db.Query(statement, debtorID, pendingStatus)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	debts := []model.Debt{}
+	for rows.Next() {
+		var debt model.Debt
+		err := rows.Scan(&debt.CreditorID, &debt.Amount, &debt.Description)
+		if err != nil {
+			return nil, err
+		}
+		debts = append(debts, debt)
+	}
+	rows.Close()
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return debts, nil
+}
+
+func (p *PaymentRepoMysql) FindPendingRequests(creditorID int) ([]model.LoanExt, error) {
+	statement := `SELECT d.debtor, s.amount, d.description, d.status_id 
+					FROM debts AS d
+					INNER JOIN debt_status AS s
+						ON d.status_id = s.id
+					WHERE d.creditor = ? AND s.status = ?`
+	rows, err := p.db.Query(statement, creditorID, pendingStatus)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	loans := []model.LoanExt{}
+	for rows.Next() {
+		var loan model.LoanExt
+		err := rows.Scan(&loan.DebtorID, &loan.Amount, &loan.Description, &loan.StatusID)
+		if err != nil {
+			return nil, err
+		}
+		loans = append(loans, loan)
+	}
+	rows.Close()
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return loans, nil
 }

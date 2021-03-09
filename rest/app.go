@@ -612,7 +612,7 @@ func (a *App) giveLoan(w http.ResponseWriter, r *http.Request) {
 	// TODO get user id
 	var userID int
 
-	gm := model.GiveTo{}
+	gm := model.Loan{}
 	err := json.NewDecoder(r.Body).Decode(gm)
 	if err != nil {
 		fmt.Printf("Error in giving money : %v", err)
@@ -640,7 +640,7 @@ func (a *App) giveLoan(w http.ResponseWriter, r *http.Request) {
 		CreditorID: userID,
 		LoanID:     loanC.ID,
 		DebtID:     debtC.ID,
-		GiveTo:     gm,
+		Loan:       gm,
 	}
 
 	if err = a.Payment.GiveLoan(t); err != nil {
@@ -682,7 +682,7 @@ func (a *App) split(w http.ResponseWriter, r *http.Request) {
 		CreditorID: userID,
 		LoanID:     loanC.ID,
 		DebtID:     debtC.ID,
-		GiveTo:     g.GiveTo,
+		Loan:       g.Loan,
 	}
 
 	if err := a.Payment.Split(t); err != nil {
@@ -707,17 +707,19 @@ func (a *App) getDebts(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, debts)
 }
 
+// Receive --> CreditorID
+// Return --> {DebtorID, Amount, Description}
 func (a *App) getLoans(w http.ResponseWriter, r *http.Request) {
 	// todo userid
 	var userID int
 
-	debts, err := a.Payment.FindActiveLoans(userID)
+	loans, err := a.Payment.FindActiveLoans(userID)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, debts)
+	respondWithJSON(w, http.StatusOK, loans)
 }
 
 // I want to requestRepay => return my debt
@@ -738,4 +740,37 @@ func (a *App) requestRepay(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusInternalServerError, "Invalid transfer")
 		return
 	}
+}
+
+// The user waits for Peter to accept his payment
+// Receive --> debtorID
+// Return  --> {creditor, amount, description}
+func (a *App) getPendingDebts(w http.ResponseWriter, r *http.Request) {
+	// todo userid
+	var userID int
+
+	debts, err := a.Payment.FindPendingDebts(userID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, debts)
+}
+
+// Peter has sent you a repay request.
+// Will you (as creditor) accept or decline it?
+// Receive --> creditorID
+// Return  --> {debtorID, amount, description, statusID}
+func (a *App) getPendingRequests(w http.ResponseWriter, r *http.Request) {
+	// todo userID == creditorID
+	var userID int
+
+	loans, err := a.Payment.FindPendingRequests(userID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, loans)
 }
