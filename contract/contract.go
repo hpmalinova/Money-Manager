@@ -38,10 +38,10 @@ type HistoryRepo interface {
 type DebtRepo interface {
 	Add(debt *model.DebtAndLoan) error
 	RequestPaymentConfirmation(statusID, amount int) error
-	AcceptPayment(statusID int) (int, error)
+	AcceptPayment(statusID int, repayAmount int) (int, error)
 	DeclinePayment(statusID int) error
 	FindActiveLoans(creditorID int) ([]model.Loan, error)
 	FindActiveDebts(debtorID int) ([]model.Debt, error)
-	FindPendingLoans(creditorID int) ([]model.Loan, error)
+	FindPendingRequests(creditorID int) ([]model.Loan, error)
 	FindPendingDebts(debtorID int) ([]model.Debt, error)
 }

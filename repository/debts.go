@@ -106,30 +106,33 @@ func (d *DebtRepoMysql) RequestPaymentConfirmation(statusID, amount int) error {
 }
 
 // TODO
-// accept payment (delete or minimize the debt)
-func (d *DebtRepoMysql) AcceptPayment(statusID int) (int, error) {
-	statement := "SELECT amount FROM debt_status WHERE id = ?"
-	var pendingAmount int
-	if err := d.db.QueryRow(statement, statusID).Scan(&pendingAmount); err != nil {
-		return 0, err
-	}
+// accept payment (delete or decrease the debt)
+func (d *DebtRepoMysql) AcceptPayment(statusID int, repayAmount int) (int, error) {
+	//// todo pending amount as parameter (from getPendingRequests)
+	//statement := "SELECT amount FROM debt_status WHERE id = ?"
+	//var pendingAmount int
+	//if err := d.db.QueryRow(statement, statusID).Scan(&pendingAmount); err != nil {
+	//	return 0, err
+	//}
 
-	statement = "SELECT amount FROM debts WHERE status_id = ?"
+	statement := "SELECT amount FROM debts WHERE status_id = ?"
 	var debtAmount int
 	if err := d.db.QueryRow(statement, statusID).Scan(&debtAmount); err != nil {
 		return 0, err
 	}
 
-	if pendingAmount < debtAmount {
-		amountToPay := debtAmount - pendingAmount
-		err := d.payPartOfDebt(statusID, amountToPay)
-		return 0, errors.New("error in paying part of the debt: " + err.Error())
-	} else if pendingAmount == debtAmount {
-		err := d.deleteDebt(statusID)
-		return 0, errors.New("error in deleting debt: " + err.Error())
+	if repayAmount < debtAmount {
+		amountToPay := debtAmount - repayAmount
+		if err := d.payPartOfDebt(statusID, amountToPay); err != nil {
+			return 0, errors.New("error in paying part of the debt: " + err.Error())
+		}
+	} else if repayAmount == debtAmount {
+		if err := d.deleteDebt(statusID); err != nil {
+			return 0, errors.New("error in deleting debt: " + err.Error())
+		}
 	}
 
-	return pendingAmount, nil
+	return repayAmount, nil
 }
 
 func (d *DebtRepoMysql) deleteDebt(statusID int) error {
@@ -232,9 +235,8 @@ func (d *DebtRepoMysql) FindActiveDebts(debtorID int) ([]model.Debt, error) {
 	return debts, nil
 }
 
-func (d *DebtRepoMysql) FindPendingLoans(creditorID int) ([]model.Loan, error) {
-	// az == creditor & status == ongoing
-	statement := `SELECT debtor, amount, description 
+func (d *DebtRepoMysql) FindPendingRequests(creditorID int) ([]model.Loan, error) {
+	statement := `SELECT d.debtor, s.amount, d.description, d.status_id 
 					FROM debts AS d
 					INNER JOIN debt_status AS s
 						ON d.status_id = s.id
@@ -248,7 +250,7 @@ func (d *DebtRepoMysql) FindPendingLoans(creditorID int) ([]model.Loan, error) {
 	loans := []model.Loan{}
 	for rows.Next() {
 		var loan model.Loan
-		err := rows.Scan(&loan.DebtorID, &loan.Amount, &loan.Description)
+		err := rows.Scan(&loan.DebtorID, &loan.Amount, &loan.Description, &loan.StatusID)
 		if err != nil {
 			return nil, err
 		}
