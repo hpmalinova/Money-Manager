@@ -69,8 +69,8 @@ func (d *DebtRepoMysql) Add(debt *model.DebtAndLoan) error {
 	statusID := int(id)
 
 	// Add Debt
-	statement = "INSERT INTO debt(creditor, debtor, amount, category_id, description, status_id) VALUES(?, ?, ?, ?, ?, ?)"
-	result, err = d.db.Exec(statement, debt.CreditorID, debt.DebtorID, debt.Amount, debt.CategoryID, debt.Description, statusID)
+	statement = "INSERT INTO debt(creditor, debtor, amount, category, description, status_id) VALUES(?, ?, ?, ?, ?, ?)"
+	result, err = d.db.Exec(statement, debt.CreditorID, debt.DebtorID, debt.Amount, debt.CategoryName, debt.Description, statusID)
 	if err != nil {
 		return err
 	}

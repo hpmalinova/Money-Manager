@@ -49,13 +49,13 @@ CREATE TABLE debt_status (
     amount INT NOT NULL
 );
 
--- todo foreign key? - creditor/debtor/category_id/status_id
+-- todo foreign key? - creditor/debtor/category/status_id
 -- todo delete status when debt is payed
 CREATE TABLE debts (
     creditor INT NOT NULL,
     debtor INT NOT NULL,
     amount INT NOT NULL,
-    category_id INT NOT NULL,
+    category VARCHAR(32) NOT NULL,
     description  VARCHAR (128),
     status_id INT NOT NULL
 );
