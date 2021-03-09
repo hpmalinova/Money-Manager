@@ -13,7 +13,7 @@ type CategoryRepoMysql struct {
 
 const (
 	expenses = "expenses"
-	incomes = "incomes"
+	incomes  = "incomes"
 )
 
 func NewCategoryRepoMysql(user, password, dbname string) *CategoryRepoMysql {

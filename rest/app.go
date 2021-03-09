@@ -525,7 +525,7 @@ func (a *App) getGroups(w http.ResponseWriter, r *http.Request) {
 // Categories //
 
 func (a *App) getCategories(w http.ResponseWriter, r *http.Request) {
-	categories, err := a.Categories.Find()
+	categories, err := a.Categories.FindAll()
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -535,3 +535,40 @@ func (a *App) getCategories(w http.ResponseWriter, r *http.Request) {
 }
 
 // Debt //
+
+// I want to pay 20lv for FOOD "Happy"
+// Receive --> user_id, amount, categoryName, description
+func (a *App) pay(w http.ResponseWriter, r *http.Request) {
+	payModel := &model.Pay{}
+	err := json.NewDecoder(r.Body).Decode(payModel)
+
+	if err != nil {
+		fmt.Printf("Error paying : %v", err)
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		//var resp = map[string]interface{}{"status": false, "message": "Invalid request"}
+		//_ = json.NewEncoder(w).Encode(resp)
+		return
+	}
+
+	// Find CategoryID
+	category, err := a.Categories.FindByName(payModel.CategoryName)
+	if err != nil {
+		message := fmt.Sprintf("There is no category %s: %v", payModel.CategoryName, err.Error())
+		respondWithError(w, http.StatusBadRequest, message)
+	}
+
+	historyModel := &model.History{
+		UserID:      payModel.UserID,
+		Amount:      payModel.Amount,
+		CategoryID:  category.ID,
+		Description: payModel.Description,
+	}
+
+	// TODO wallet
+	// If enough money in wallet => pay and remove money
+	err = a.History.Pay(historyModel)
+	if err != nil {
+		message := fmt.Sprintf("Unsuccessful payment: %v", err.Error())
+		respondWithError(w, http.StatusBadRequest, message)
+	}
+}
