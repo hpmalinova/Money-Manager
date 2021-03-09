@@ -37,5 +37,7 @@ type PaymentRepo interface {
 	GiveLoan(t *model.Transfer) error
 	Split(t *model.Transfer) error
 
+	FindActiveDebts(debtorID int) ([]model.Debt, error)
+	FindActiveLoans(creditorID int) ([]model.Loan, error)
 	RequestRepay(debtID, amount int) error
 }

@@ -543,6 +543,7 @@ func (a *App) getCategories(w http.ResponseWriter, r *http.Request) {
 // I want to pay 20lv for FOOD "Happy"
 // Receive --> user_id, amount, categoryName, description
 func (a *App) pay(w http.ResponseWriter, r *http.Request) {
+	// todo userID and remove from Pay model
 	payModel := &model.Pay{}
 	err := json.NewDecoder(r.Body).Decode(payModel)
 
@@ -575,6 +576,7 @@ func (a *App) pay(w http.ResponseWriter, r *http.Request) {
 // I earn 1000lv from SALARY "Job"
 // Receive --> user_id, amount, categoryName, description
 func (a *App) earn(w http.ResponseWriter, r *http.Request) {
+	// todo userID and remove from Pay model
 	payModel := &model.Pay{}
 	err := json.NewDecoder(r.Body).Decode(payModel)
 
@@ -688,6 +690,34 @@ func (a *App) split(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusInternalServerError, msg)
 		return
 	}
+}
+
+// Receive --> DebtorID
+// Return --> {StatusID, CreditorID, Amount, CategoryName, Description}
+func (a *App) getDebts(w http.ResponseWriter, r *http.Request) {
+	// todo userid
+	var userID int
+
+	debts, err := a.Payment.FindActiveDebts(userID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, debts)
+}
+
+func (a *App) getLoans(w http.ResponseWriter, r *http.Request) {
+	// todo userid
+	var userID int
+
+	debts, err := a.Payment.FindActiveLoans(userID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, debts)
 }
 
 // I want to requestRepay => return my debt

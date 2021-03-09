@@ -286,6 +286,62 @@ func (p *PaymentRepoMysql) Split(t *model.Transfer) error {
 	return nil
 }
 
+func (p *PaymentRepoMysql) FindActiveDebts(debtorID int) ([]model.Debt, error) {
+	statement := `SELECT d.status_id, d.creditor, d.amount, d.description, d.category 
+					FROM debts AS d
+					INNER JOIN debt_status AS s
+						ON d.status_id = s.id
+					WHERE d.debtor = ? AND s.status=?`
+	rows, err := p.db.Query(statement, debtorID, ongoingStatus)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	debts := []model.Debt{}
+	for rows.Next() {
+		var debt model.Debt
+		err := rows.Scan(&debt.StatusID, &debt.CreditorID, &debt.Amount, &debt.Description, &debt.CategoryName)
+		if err != nil {
+			return nil, err
+		}
+		debts = append(debts, debt)
+	}
+	rows.Close()
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return debts, nil
+}
+
+func (p *PaymentRepoMysql) FindActiveLoans(creditorID int) ([]model.Loan, error) {
+	statement := `SELECT d.debtor, d.amount, d.description 
+					FROM debts AS d
+					INNER JOIN debt_status AS s
+						ON d.status_id = s.id
+					WHERE d.creditor = ? AND s.status=?`
+	rows, err := p.db.Query(statement, creditorID, ongoingStatus)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	loans := []model.Loan{}
+	for rows.Next() {
+		var loan model.Loan
+		err := rows.Scan(&loan.DebtorID, &loan.Amount, &loan.Description)
+		if err != nil {
+			return nil, err
+		}
+		loans = append(loans, loan)
+	}
+	rows.Close()
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return loans, nil
+}
+
 func (p *PaymentRepoMysql) RequestRepay(debtID, amount int) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
@@ -308,7 +364,7 @@ func (p *PaymentRepoMysql) RequestRepay(debtID, amount int) error {
 	// Get Amount of Debt
 	statement := "SELECT amount FROM debt_status WHERE id = ?"
 	var debtAmount int
-	err = tx.QueryRowContext(ctx,statement, debtID).Scan(&debtAmount)
+	err = tx.QueryRowContext(ctx, statement, debtID).Scan(&debtAmount)
 	if err != nil {
 		return err
 	}
@@ -330,4 +386,3 @@ func (p *PaymentRepoMysql) RequestRepay(debtID, amount int) error {
 	}
 	return nil
 }
-
