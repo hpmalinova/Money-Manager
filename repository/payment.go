@@ -209,3 +209,79 @@ func (p *PaymentRepoMysql) GiveLoan(t *model.Transfer) error {
 	}
 	return nil
 }
+
+func (p *PaymentRepoMysql) Split(t *model.Transfer) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	conn, err := p.db.Conn(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	// BEGIN TRANSACTION
+	tx, err := conn.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil {
+		return err
+	}
+
+	// DEFER ROLLBACK
+	defer tx.Rollback()
+
+	// Remove money from wallet (Creditor)
+	statement := "UPDATE wallet SET balance = balance - ? WHERE user_id = ?"
+	_, err = tx.ExecContext(ctx, statement, t.Amount, t.CreditorID)
+	if err != nil {
+		msg := fmt.Sprintf("not enough money: %s", err.Error())
+		return errors.New(msg)
+	}
+
+	halfAmount := t.Amount / 2
+
+	// Add to expenses (Creditor: Pay)
+	statement = "INSERT INTO money_history(uid, amount, category_id, description) VALUES(?, ?, ?, ?)"
+	_, err = tx.ExecContext(ctx, statement, t.CreditorID, halfAmount, t.DebtID, t.Description)
+	if err != nil {
+		return err
+	}
+
+	// Add to expenses (Creditor: Loan)
+	statement = "INSERT INTO money_history(uid, amount, category_id, description) VALUES(?, ?, ?, ?)"
+	_, err = tx.ExecContext(ctx, statement, t.CreditorID, halfAmount, t.LoanID, t.Description)
+	if err != nil {
+		return err
+	}
+
+	// Add Debt
+	statement = "INSERT INTO debt_status(status, amount) VALUES(?, ?)"
+	result, err := tx.ExecContext(ctx, statement, ongoingStatus, halfAmount)
+	if err != nil {
+		return err
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return err
+	}
+	statusID := int(id)
+
+	statement = "INSERT INTO debts(creditor, debtor, amount, category, description, status_id) VALUES(?, ?, ?, ?, ?, ?)"
+	result, err = tx.ExecContext(ctx, statement, t.CreditorID, t.DebtorID, halfAmount, t.DebtID, t.Description, statusID)
+	if err != nil {
+		return err
+	}
+
+	numRows, err := result.RowsAffected()
+	if err != nil || numRows != 1 {
+		msg := fmt.Sprintf("error inserting debt: %s\n", err)
+		return errors.New(msg)
+	}
+
+	// COMMIT TRANSACTION
+	if err := tx.Commit(); err != nil {
+		msg := fmt.Sprintf("error in splitting money: %s\n", err)
+		return errors.New(msg)
+	}
+	return nil
+}
