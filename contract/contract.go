@@ -29,19 +29,8 @@ type CategoryRepo interface {
 	FindAll() ([]model.Category, error)
 }
 
-type HistoryRepo interface {
-	Pay(history *model.History) error
-	GiveLoan(loan *model.LoanHistory) error
-	ReceiveDebt(loan *model.LoanHistory) error
-}
-
-type DebtRepo interface {
-	Add(debt *model.DebtAndLoan) error
-	RequestPaymentConfirmation(statusID, amount int) error
-	AcceptPayment(statusID int, repayAmount int) (int, error)
-	DeclinePayment(statusID int) error
-	FindActiveLoans(creditorID int) ([]model.Loan, error)
-	FindActiveDebts(debtorID int) ([]model.Debt, error)
-	FindPendingRequests(creditorID int) ([]model.Loan, error)
-	FindPendingDebts(debtorID int) ([]model.Debt, error)
+type PaymentRepo interface {
+	CheckBalance(userID int) (int, error)
+	Pay(pay *model.History) error
+	Earn(pay *model.History) error
 }

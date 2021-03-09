@@ -3,7 +3,6 @@ package rest
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"strconv"
@@ -34,8 +33,9 @@ type App struct {
 	Friendship contract.FriendshipRepo
 	Groups     contract.GroupRepo
 	Categories contract.CategoryRepo
-	History    contract.HistoryRepo
-	Debt       contract.DebtRepo
+	//History    contract.HistoryRepo
+	//Debt       contract.DebtRepo
+	Payment contract.PaymentRepo
 
 	Validator  *validator.Validate
 	Translator ut.Translator
@@ -48,8 +48,9 @@ func (a *App) Init(user, password, dbname string) {
 	a.Friendship = repository.NewFriendRepoMysql(user, password, dbname)
 	a.Groups = repository.NewGroupRepoMysql(user, password, dbname)
 	a.Categories = repository.NewCategoryRepoMysql(user, password, dbname)
-	a.History = repository.NewHistoryRepoMysql(user, password, dbname)
-	a.Debt = repository.NewDebtRepoMysql(user, password, dbname)
+	//a.History = repository.NewHistoryRepoMysql(user, password, dbname)
+	//a.Debt = repository.NewDebtRepoMysql(user, password, dbname)
+	a.Payment = repository.NewPaymentRepoMysql(user, password, dbname)
 
 	a.Validator = validator.New()
 	eng := en.New()
@@ -525,7 +526,7 @@ func (a *App) getGroups(w http.ResponseWriter, r *http.Request) {
 
 // Categories //
 
-// todo add getExpense/getIncome
+// todo: getExpense/getIncome
 
 func (a *App) getCategories(w http.ResponseWriter, r *http.Request) {
 	categories, err := a.Categories.FindAll()
@@ -548,8 +549,6 @@ func (a *App) pay(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Printf("Error paying : %v", err)
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
-		//var resp = map[string]interface{}{"status": false, "message": "Invalid request"}
-		//_ = json.NewEncoder(w).Encode(resp)
 		return
 	}
 
@@ -560,287 +559,47 @@ func (a *App) pay(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, message)
 	}
 
-	historyModel := &model.History{
+	h := &model.History{
 		UserID:      payModel.UserID,
 		Amount:      payModel.Amount,
 		CategoryID:  category.ID,
 		Description: payModel.Description,
 	}
 
-	statusCode, err := a.payHelp(historyModel)
+	err = a.Payment.Pay(h)
 	if err != nil {
-		respondWithError(w, statusCode, err.Error())
+		respondWithError(w, http.StatusBadRequest, err.Error())
 	}
-
-	//// TODO wallet
-	//// If enough money in wallet => pay and remove money
-	//err = a.History.Pay(historyModel)
-	//if err != nil {
-	//	message := fmt.Sprintf("Unsuccessful payment: %v", err.Error())
-	//	respondWithError(w, http.StatusBadRequest, message)
-	//}
 }
 
-func (a *App) payHelp(historyModel *model.History) (int, error) {
-	// TODO wallet
-	// If enough money in wallet => pay and remove money
-	err := a.History.Pay(historyModel)
-	if err != nil {
-		message := fmt.Sprintf("Unsuccessful payment: %v", err.Error())
-		return http.StatusBadRequest, errors.New(message)
-	}
-	return http.StatusOK, nil
-}
-
-// todo check if friend
-// I want to giveLoan to George
-// Receive --> user_id, debtor_id, amount, description
-func (a *App) giveLoan(w http.ResponseWriter, r *http.Request) {
-	// todo get user id
-	var userID int
-	giveLoan := &model.GiveLoan{}
-	err := json.NewDecoder(r.Body).Decode(giveLoan)
+// I earn 1000lv from SALARY
+// Receive --> user_id, amount, categoryName, description
+func (a *App) earn(w http.ResponseWriter, r *http.Request) {
+	payModel := &model.Pay{}
+	err := json.NewDecoder(r.Body).Decode(payModel)
 
 	if err != nil {
-		fmt.Printf("Error giving loan : %v", err)
+		fmt.Printf("Error paying : %v", err)
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
-	cLoan, err := a.Categories.FindByName(loan)
+	// Find CategoryID
+	category, err := a.Categories.FindByName(payModel.CategoryName)
 	if err != nil {
-		msg := fmt.Sprintf("No category: %s", loan)
-		respondWithError(w, http.StatusInternalServerError, msg)
-		return
+		message := fmt.Sprintf("There is no category %s: %v", payModel.CategoryName, err.Error())
+		respondWithError(w, http.StatusBadRequest, message)
 	}
 
-	loanH := model.LoanHistory{
-		DebtorID: giveLoan.DebtorID,
-		History: model.History{
-			UserID:      userID,
-			Amount:      giveLoan.Amount,
-			CategoryID:  cLoan.ID,
-			Description: giveLoan.Description,
-		},
-	}
-
-	dl := model.DebtAndLoan{
-		CreditorID:   userID,
-		DebtorID:     giveLoan.DebtorID,
-		Amount:       giveLoan.Amount,
-		CategoryName: cLoan.Name,
-		Description:  giveLoan.Description,
-	}
-
-	statusCode, err := a.giveLoanHelp(loanH, dl)
-	if err != nil {
-		respondWithError(w, statusCode, err.Error())
-	}
-}
-
-const (
-	loan = "Loan"
-)
-
-func (a *App) giveLoanHelp(loanH model.LoanHistory, dl model.DebtAndLoan) (int, error) {
-	// TODO Remove money from wallet
-
-	// Add to expenses
-	err := a.History.GiveLoan(&loanH)
-	if err != nil {
-		msg := fmt.Sprintf("Error in giving loan: %s", err)
-		//respondWithError(w, http.StatusInternalServerError , msg) // todo delete
-		return http.StatusInternalServerError, errors.New(msg)
-	}
-
-	// Add to debt
-	err = a.Debt.Add(&dl)
-	if err != nil {
-		msg := fmt.Sprintf("Error in creating debt: %s", err)
-		//respondWithError(w, http.StatusInternalServerError, msg) // TODO delete
-		return http.StatusInternalServerError, errors.New(msg)
-	}
-
-	return http.StatusOK, nil
-}
-
-// I want to split money with George
-// Receive --> user_id, debtor_id, amount, categoryName, description
-func (a *App) split(w http.ResponseWriter, r *http.Request) {
-	var userID int // TODO
-
-	split := &model.Split{}
-	err := json.NewDecoder(r.Body).Decode(split)
-	if err != nil {
-		fmt.Printf("Error splitting money: %v", err)
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
-		//var resp = map[string]interface{}{"status": false, "message": "Invalid request"}
-		//_ = json.NewEncoder(w).Encode(resp)
-		return
-	}
-
-	halfAmount := split.Amount / 2 // TODO check round
-
-	// Pay my part of the split
-	category, _ := a.Categories.FindByName(split.CategoryName)
-
-	historyModel := &model.History{
-		UserID:      userID,
-		Amount:      halfAmount,
+	h := &model.History{
+		UserID:      payModel.UserID,
+		Amount:      payModel.Amount,
 		CategoryID:  category.ID,
-		Description: split.Description,
+		Description: payModel.Description,
 	}
 
-	statusCode, err := a.payHelp(historyModel)
+	err = a.Payment.Earn(h)
 	if err != nil {
-		respondWithError(w, statusCode, err.Error())
-	}
-
-	// Give money to George
-	cLoan, err := a.Categories.FindByName(loan)
-	if err != nil {
-		msg := fmt.Sprintf("No category: %s", loan)
-		respondWithError(w, http.StatusInternalServerError, msg)
-		return
-	}
-
-	loanH := model.LoanHistory{
-		DebtorID: split.DebtorID,
-		History: model.History{
-			UserID:      userID,
-			Amount:      halfAmount,
-			CategoryID:  cLoan.ID,
-			Description: split.Description,
-		},
-	}
-
-	dl := model.DebtAndLoan{
-		CreditorID:   userID,
-		DebtorID:     split.DebtorID,
-		Amount:       halfAmount,
-		CategoryName: cLoan.Name,
-		Description:  split.Description,
-	}
-
-	statusCode, err = a.giveLoanHelp(loanH, dl)
-	if err != nil {
-		respondWithError(w, statusCode, err.Error())
-	}
-}
-
-func (a *App) getDebts(w http.ResponseWriter, r *http.Request) {
-	// todo userid
-	var userID int
-
-	debts, err := a.Debt.FindActiveDebts(userID)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
-		return
-	}
-
-	respondWithJSON(w, http.StatusOK, debts)
-}
-
-func (a *App) getLoans(w http.ResponseWriter, r *http.Request) {
-	// todo userid
-	var userID int
-
-	debts, err := a.Debt.FindActiveLoans(userID)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
-		return
-	}
-
-	respondWithJSON(w, http.StatusOK, debts)
-}
-
-// Receive --> debtID, amount
-func (a *App) sendRepayRequest(w http.ResponseWriter, r *http.Request) {
-	// todo check if debtorID==userID
-	rr := &model.RepayRequest{}
-	err := json.NewDecoder(r.Body).Decode(rr)
-
-	if err != nil {
-		fmt.Printf("Error repaying debt: %v", err)
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
-		return
-	}
-
-	err = a.Debt.RequestPaymentConfirmation(rr.DebtID, rr.Amount)
-	if err != nil {
-		fmt.Printf("Error repaying debt: %v", err)
-		respondWithError(w, http.StatusBadRequest, "Invalid transfer")
-		return
-	}
-}
-
-// The user waits for Peter to accept his payment
-// Receive --> debtorID
-// Return  --> {creditor, amount, description}
-func (a *App) getPendingDebts(w http.ResponseWriter, r *http.Request) {
-	// todo userid
-	var userID int
-
-	debts, err := a.Debt.FindPendingDebts(userID)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
-		return
-	}
-
-	respondWithJSON(w, http.StatusOK, debts)
-}
-
-// Peter has sent you a repay request.
-// Will you (as creditor) accept or decline it?
-// Receive --> creditorID
-// Return  --> {debtorID, amount, description, statusID}
-func (a *App) getPendingRequests(w http.ResponseWriter, r *http.Request) {
-	// todo userID == creditorID
-	var userID int
-
-	loans, err := a.Debt.FindPendingRequests(userID)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
-		return
-	}
-
-	respondWithJSON(w, http.StatusOK, loans)
-}
-
-// Receive --> {debtorID, amount, description, statusID}
-func (a *App) acceptPayment(w http.ResponseWriter, r *http.Request) {
-	l := &model.Loan{}
-	err := json.NewDecoder(r.Body).Decode(l)
-	if err != nil {
-		fmt.Printf("Error accepting request: %v", err)
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
-		return
-	}
-
-	repayAmount, err := a.Debt.AcceptPayment(l.StatusID, l.Amount)
-	if err != nil {
-		fmt.Printf("Error declining request: %v", err)
-		respondWithError(w, http.StatusInternalServerError, "Invalid request payload")
-		return
-	}
-
-	// todo remove that amount from debtor's wallet
-	fmt.Println(repayAmount)
-}
-
-// Receive --> {statusID}
-func (a *App) declinePayment(w http.ResponseWriter, r *http.Request) {
-	var statusID int
-	err := json.NewDecoder(r.Body).Decode(statusID)
-	if err != nil {
-		fmt.Printf("Error declining request: %v", err)
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
-		return
-	}
-
-	if err := a.Debt.DeclinePayment(statusID); err != nil {
-		fmt.Printf("Error declining request: %v", err)
-		respondWithError(w, http.StatusInternalServerError, "Invalid request payload")
-		return
+		respondWithError(w, http.StatusBadRequest, err.Error())
 	}
 }
