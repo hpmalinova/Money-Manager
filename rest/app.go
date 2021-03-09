@@ -3,6 +3,7 @@ package rest
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"strconv"
@@ -564,11 +565,163 @@ func (a *App) pay(w http.ResponseWriter, r *http.Request) {
 		Description: payModel.Description,
 	}
 
+	statusCode, err := a.payHelp(historyModel)
+	if err != nil {
+		respondWithError(w, statusCode, err.Error())
+	}
+
+	//// TODO wallet
+	//// If enough money in wallet => pay and remove money
+	//err = a.History.Pay(historyModel)
+	//if err != nil {
+	//	message := fmt.Sprintf("Unsuccessful payment: %v", err.Error())
+	//	respondWithError(w, http.StatusBadRequest, message)
+	//}
+}
+
+func (a *App) payHelp(historyModel *model.History) (int, error) {
 	// TODO wallet
 	// If enough money in wallet => pay and remove money
-	err = a.History.Pay(historyModel)
+	err := a.History.Pay(historyModel)
 	if err != nil {
 		message := fmt.Sprintf("Unsuccessful payment: %v", err.Error())
-		respondWithError(w, http.StatusBadRequest, message)
+		return http.StatusBadRequest, errors.New(message)
+	}
+	return http.StatusOK, nil
+}
+
+// todo check if friend
+// I want to giveLoan to George
+// Receive --> user_id, debtor_id, amount, description
+func (a *App) giveLoan(w http.ResponseWriter, r *http.Request) {
+	// todo get user id
+	var userID int
+	giveLoan := &model.GiveLoan{}
+	err := json.NewDecoder(r.Body).Decode(giveLoan)
+
+	if err != nil {
+		fmt.Printf("Error giving loan : %v", err)
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	cLoan, err := a.Categories.FindByName(loan)
+	if err != nil {
+		msg := fmt.Sprintf("No category: %s", loan)
+		respondWithError(w, http.StatusInternalServerError, msg)
+		return
+	}
+
+	loanH := model.LoanHistory{
+		DebtorID: giveLoan.DebtorID,
+		History: model.History{
+			UserID:      userID,
+			Amount:      giveLoan.Amount,
+			CategoryID:  cLoan.ID,
+			Description: giveLoan.Description,
+		},
+	}
+
+	dl := model.DebtAndLoan{
+		CreditorID:   userID,
+		DebtorID:     giveLoan.DebtorID,
+		Amount:       giveLoan.Amount,
+		CategoryName: cLoan.Name,
+		Description:  giveLoan.Description,
+	}
+
+	statusCode, err := a.giveLoanHelp(loanH, dl)
+	if err != nil {
+		respondWithError(w, statusCode, err.Error())
+	}
+}
+
+const (
+	loan = "Loan"
+)
+
+func (a *App) giveLoanHelp(loanH model.LoanHistory, dl model.DebtAndLoan) (int, error) {
+	// TODO Remove money from wallet
+
+	// Add to expenses
+	err := a.History.GiveLoan(&loanH)
+	if err != nil {
+		msg := fmt.Sprintf("Error in giving loan: %s", err)
+		//respondWithError(w, http.StatusInternalServerError , msg) // todo delete
+		return http.StatusInternalServerError, errors.New(msg)
+	}
+
+	// Add to debt
+	err = a.Debt.Add(&dl)
+	if err != nil {
+		msg := fmt.Sprintf("Error in creating debt: %s", err)
+		//respondWithError(w, http.StatusInternalServerError, msg) // TODO delete
+		return http.StatusInternalServerError, errors.New(msg)
+	}
+
+	return http.StatusOK, nil
+}
+
+// I want to split money with George
+// Receive --> user_id, debtor_id, amount, categoryName, description
+func (a *App) split(w http.ResponseWriter, r *http.Request) {
+	var userID int // TODO
+
+	split := &model.Split{}
+	err := json.NewDecoder(r.Body).Decode(split)
+	if err != nil {
+		fmt.Printf("Error splitting money: %v", err)
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		//var resp = map[string]interface{}{"status": false, "message": "Invalid request"}
+		//_ = json.NewEncoder(w).Encode(resp)
+		return
+	}
+
+	halfAmount := split.Amount / 2 // TODO check round
+
+	// Pay my part of the split
+	category, _ := a.Categories.FindByName(split.CategoryName)
+
+	historyModel := &model.History{
+		UserID:      userID,
+		Amount:      halfAmount,
+		CategoryID:  category.ID,
+		Description: split.Description,
+	}
+
+	statusCode, err := a.payHelp(historyModel)
+	if err != nil {
+		respondWithError(w, statusCode, err.Error())
+	}
+
+	// Give money to George
+	cLoan, err := a.Categories.FindByName(loan)
+	if err != nil {
+		msg := fmt.Sprintf("No category: %s", loan)
+		respondWithError(w, http.StatusInternalServerError, msg)
+		return
+	}
+
+	loanH := model.LoanHistory{
+		DebtorID: split.DebtorID,
+		History: model.History{
+			UserID:      userID,
+			Amount:      halfAmount,
+			CategoryID:  cLoan.ID,
+			Description: split.Description,
+		},
+	}
+
+	dl := model.DebtAndLoan{
+		CreditorID:   userID,
+		DebtorID:     split.DebtorID,
+		Amount:       halfAmount,
+		CategoryName: cLoan.Name,
+		Description:  split.Description,
+	}
+
+	statusCode, err = a.giveLoanHelp(loanH, dl)
+	if err != nil {
+		respondWithError(w, statusCode, err.Error())
 	}
 }
