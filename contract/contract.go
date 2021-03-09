@@ -31,8 +31,11 @@ type CategoryRepo interface {
 
 type PaymentRepo interface {
 	CheckBalance(userID int) (int, error)
+
 	Pay(h *model.History) error
 	Earn(h *model.History) error
 	GiveLoan(t *model.Transfer) error
 	Split(t *model.Transfer) error
+
+	RequestRepay(debtID, amount int) error
 }

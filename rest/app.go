@@ -689,3 +689,23 @@ func (a *App) split(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+// I want to requestRepay => return my debt
+// Receive --> debtID, amount
+func (a *App) requestRepay(w http.ResponseWriter, r *http.Request) {
+	rr := &model.RepayRequest{}
+	err := json.NewDecoder(r.Body).Decode(rr)
+
+	if err != nil {
+		fmt.Printf("Error requesting repay: %v", err)
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	err = a.Payment.RequestRepay(rr.DebtID, rr.Amount)
+	if err != nil {
+		fmt.Printf("Error requesting repay: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Invalid transfer")
+		return
+	}
+}

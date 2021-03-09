@@ -285,3 +285,49 @@ func (p *PaymentRepoMysql) Split(t *model.Transfer) error {
 	}
 	return nil
 }
+
+func (p *PaymentRepoMysql) RequestRepay(debtID, amount int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	conn, err := p.db.Conn(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	// BEGIN TRANSACTION
+	tx, err := conn.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil {
+		return err
+	}
+
+	// DEFER ROLLBACK
+	defer tx.Rollback()
+
+	// Get Amount of Debt
+	statement := "SELECT amount FROM debt_status WHERE id = ?"
+	var debtAmount int
+	err = tx.QueryRowContext(ctx,statement, debtID).Scan(&debtAmount)
+	if err != nil {
+		return err
+	}
+
+	// You can`t repay more than you've received
+	if amount > debtAmount {
+		amount = debtAmount
+	}
+
+	statement = "UPDATE debt_status SET status = ?, amount = ? WHERE id = ?"
+	if _, err = tx.ExecContext(ctx, statement, pendingStatus, amount, debtID); err != nil {
+		return err
+	}
+
+	// COMMIT TRANSACTION
+	if err := tx.Commit(); err != nil {
+		msg := fmt.Sprintf("error in splitting money: %s\n", err)
+		return errors.New(msg)
+	}
+	return nil
+}
+
