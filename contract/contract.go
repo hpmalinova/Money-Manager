@@ -30,7 +30,7 @@ type CategoryRepo interface {
 }
 
 type PaymentRepo interface {
-	CheckBalance(userID int) (int, error)
+	CheckBalance(userID int) (int, error) // TODO in server
 
 	Pay(h *model.History) error
 	Earn(h *model.History) error
@@ -43,4 +43,8 @@ type PaymentRepo interface {
 
 	FindPendingDebts(debtorID int) ([]model.Debt, error)
 	FindPendingRequests(creditorID int) ([]model.LoanExt, error)
+
+	AcceptPayment(a *model.Accept) error
+
+	FindCategoryName(statusID int) (categoryName string, err error)
 }

@@ -33,9 +33,7 @@ type App struct {
 	Friendship contract.FriendshipRepo
 	Groups     contract.GroupRepo
 	Categories contract.CategoryRepo
-	//History    contract.HistoryRepo
-	//Debt       contract.DebtRepo
-	Payment contract.PaymentRepo
+	Payment    contract.PaymentRepo
 
 	Validator  *validator.Validate
 	Translator ut.Translator
@@ -48,8 +46,6 @@ func (a *App) Init(user, password, dbname string) {
 	a.Friendship = repository.NewFriendRepoMysql(user, password, dbname)
 	a.Groups = repository.NewGroupRepoMysql(user, password, dbname)
 	a.Categories = repository.NewCategoryRepoMysql(user, password, dbname)
-	//a.History = repository.NewHistoryRepoMysql(user, password, dbname)
-	//a.Debt = repository.NewDebtRepoMysql(user, password, dbname)
 	a.Payment = repository.NewPaymentRepoMysql(user, password, dbname)
 
 	a.Validator = validator.New()
@@ -538,6 +534,22 @@ func (a *App) getCategories(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, categories)
 }
 
+func (a *App) getCategoryByName(categoryName string) *model.Category {
+	c, err := a.Categories.FindByName(categoryName)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	return c
+}
+
+func (a *App) getCategoryByStatus(statusID int) string {
+	cName, err := a.Payment.FindCategoryName(statusID)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	return cName
+}
+
 // Debt //
 
 // I want to pay 20lv for FOOD "Happy"
@@ -761,7 +773,7 @@ func (a *App) getPendingDebts(w http.ResponseWriter, r *http.Request) {
 // Peter has sent you a repay request.
 // Will you (as creditor) accept or decline it?
 // Receive --> creditorID
-// Return  --> {debtorID, amount, description, statusID}
+// Return  --> {debtorID, pendingAmount, description, statusID}
 func (a *App) getPendingRequests(w http.ResponseWriter, r *http.Request) {
 	// todo userID == creditorID
 	var userID int
@@ -773,4 +785,35 @@ func (a *App) getPendingRequests(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondWithJSON(w, http.StatusOK, loans)
+}
+
+// Peter has sent you a repay request. You acceptPayment.
+// Receive --> statusID
+func (a *App) acceptPayment(w http.ResponseWriter, r *http.Request) {
+	var statusID int
+	err := json.NewDecoder(r.Body).Decode(&statusID)
+	if err != nil {
+		fmt.Printf("Error accepting payment: %v", err)
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	expenseC := a.getCategoryByName(a.getCategoryByStatus(statusID))
+	repayC := a.getCategoryByName("Repay")
+
+	//var repay = "Repay"
+	//repayC, err := a.Categories.FindByName(repay)
+	//if err != nil {
+	//	msg := fmt.Sprintf("No category: %s", repay)
+	//	respondWithError(w, http.StatusInternalServerError, msg)
+	//	return
+	//}
+
+	am := &model.Accept{StatusID: statusID, RepayC: *repayC, ExpenseC: *expenseC}
+
+	if err = a.Payment.AcceptPayment(am); err!=nil{
+		msg := fmt.Sprintf("Error accepting payment: %v", err.Error())
+		respondWithError(w, http.StatusInternalServerError, msg)
+		return
+	}
 }

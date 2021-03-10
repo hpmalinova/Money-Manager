@@ -59,3 +59,23 @@ type History struct {
 	CategoryID  int    `json:"categoryID" validate:"numeric,gte=0"`
 	Description string `json:"description,omitempty"`
 }
+
+type Accept struct {
+	StatusID int      `json:"statusID" validate:"numeric,gte=0"`
+	RepayC   Category `json:"repayC"`
+	ExpenseC Category `json:"expenseC"`
+}
+
+type AcceptPayment struct {
+	CreditorID  int    `json:"creditorID" validate:"numeric,gte=0"`
+	DebtorID    int    `json:"debtorID" validate:"numeric,gte=0"`
+	DebtAmount  int    `json:"debtAmount" validate:"numeric,gte=0"`
+	Description string `json:"description,omitempty"`
+	Status
+}
+
+type Status struct {
+	StatusID      int    `json:"statusID" validate:"numeric,gte=0"`
+	Status        string `json:"status"` //todo expense/income
+	PendingAmount int    `json:"pendingAmount" validate:"numeric,gte=0"`
+}
