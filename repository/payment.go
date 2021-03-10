@@ -83,8 +83,7 @@ func (p *PaymentRepoMysql) Pay(h *model.History) error {
 
 	// COMMIT TRANSACTION
 	if err := tx.Commit(); err != nil {
-		msg := fmt.Sprintf("error in paying: %s\n", err)
-		return errors.New(msg)
+		return err
 	}
 	return nil
 }
@@ -122,8 +121,7 @@ func (p *PaymentRepoMysql) Earn(h *model.History) error {
 
 	// COMMIT TRANSACTION
 	if err := tx.Commit(); err != nil {
-		msg := fmt.Sprintf("error in earning: %s\n", err)
-		return errors.New(msg)
+		return err
 	}
 	return nil
 }
@@ -204,8 +202,7 @@ func (p *PaymentRepoMysql) GiveLoan(t *model.Transfer) error {
 
 	// COMMIT TRANSACTION
 	if err := tx.Commit(); err != nil {
-		msg := fmt.Sprintf("error in giving loan: %s\n", err)
-		return errors.New(msg)
+		return err
 	}
 	return nil
 }
@@ -280,8 +277,7 @@ func (p *PaymentRepoMysql) Split(t *model.Transfer) error {
 
 	// COMMIT TRANSACTION
 	if err := tx.Commit(); err != nil {
-		msg := fmt.Sprintf("error in splitting money: %s\n", err)
-		return errors.New(msg)
+		return err
 	}
 	return nil
 }
@@ -381,8 +377,7 @@ func (p *PaymentRepoMysql) RequestRepay(debtID, amount int) error {
 
 	// COMMIT TRANSACTION
 	if err := tx.Commit(); err != nil {
-		msg := fmt.Sprintf("error in splitting money: %s\n", err)
-		return errors.New(msg)
+		return err
 	}
 	return nil
 }
@@ -516,22 +511,58 @@ func (p *PaymentRepoMysql) AcceptPayment(a *model.Accept) error {
 
 	// Creditor
 	statement = "INSERT INTO money_history(uid, amount, category_id, description) VALUES(?, ?, ?, ?)"
-	_, err = tx.ExecContext(ctx,statement, ap.CreditorID, ap.PendingAmount, a.RepayC.ID, ap.Description)
+	_, err = tx.ExecContext(ctx, statement, ap.CreditorID, ap.PendingAmount, a.RepayC.ID, ap.Description)
 	if err != nil {
 		return err
 	}
 
 	// Debtor
 	statement = "INSERT INTO money_history(uid, amount, category_id, description) VALUES(?, ?, ?, ?)"
-	_, err = tx.ExecContext(ctx,statement, ap.DebtorID, ap.PendingAmount, a.ExpenseC.ID, ap.Description)
+	_, err = tx.ExecContext(ctx, statement, ap.DebtorID, ap.PendingAmount, a.ExpenseC.ID, ap.Description)
 	if err != nil {
 		return err
 	}
 
 	// COMMIT TRANSACTION
 	if err := tx.Commit(); err != nil {
-		msg := fmt.Sprintf("error in earning: %s\n", err)
-		return errors.New(msg)
+		return err
+	}
+	return nil
+}
+
+func (p *PaymentRepoMysql) DeclinePayment(statusID int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	conn, err := p.db.Conn(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	// BEGIN TRANSACTION
+	tx, err := conn.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil {
+		return err
+	}
+
+	// DEFER ROLLBACK
+	defer tx.Rollback()
+
+	statement := "SELECT amount FROM debts WHERE status_id = ?"
+	var debtAmount int
+	if err := tx.QueryRowContext(ctx, statement, statusID).Scan(&debtAmount); err != nil {
+		return err
+	}
+
+	statement = "UPDATE debt_status SET status = ?, amount = ? WHERE id = ?"
+	if _, err = tx.ExecContext(ctx, statement, ongoingStatus, debtAmount, statusID); err != nil {
+		return err
+	}
+
+	// COMMIT TRANSACTION
+	if err := tx.Commit(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -541,41 +572,3 @@ func (p *PaymentRepoMysql) FindCategoryName(statusID int) (categoryName string, 
 	err = p.db.QueryRow(statement, statusID).Scan(&categoryName)
 	return categoryName, err
 }
-
-//// Receive --> {debtorID, amount, description, statusID}
-//func (a *App) acceptPayment(w http.ResponseWriter, r *http.Request) {
-//	l := &model.Loan{}
-//	err := json.NewDecoder(r.Body).Decode(l)
-//	if err != nil {
-//		fmt.Printf("Error accepting request: %v", err)
-//		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
-//		return
-//	}
-//
-//	repayAmount, err := a.Debt.AcceptPayment(l.StatusID, l.Amount)
-//	if err != nil {
-//		fmt.Printf("Error declining request: %v", err)
-//		respondWithError(w, http.StatusInternalServerError, "Invalid request payload")
-//		return
-//	}
-//
-//	// todo remove that amount from debtor's wallet
-//	fmt.Println(repayAmount)
-//}
-//
-//// Receive --> {statusID}
-//func (a *App) declinePayment(w http.ResponseWriter, r *http.Request) {
-//	var statusID int
-//	err := json.NewDecoder(r.Body).Decode(statusID)
-//	if err != nil {
-//		fmt.Printf("Error declining request: %v", err)
-//		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
-//		return
-//	}
-//
-//	if err := a.Debt.DeclinePayment(statusID); err != nil {
-//		fmt.Printf("Error declining request: %v", err)
-//		respondWithError(w, http.StatusInternalServerError, "Invalid request payload")
-//		return
-//	}
-//}

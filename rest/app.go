@@ -811,9 +811,27 @@ func (a *App) acceptPayment(w http.ResponseWriter, r *http.Request) {
 
 	am := &model.Accept{StatusID: statusID, RepayC: *repayC, ExpenseC: *expenseC}
 
-	if err = a.Payment.AcceptPayment(am); err!=nil{
+	if err = a.Payment.AcceptPayment(am); err != nil {
 		msg := fmt.Sprintf("Error accepting payment: %v", err.Error())
 		respondWithError(w, http.StatusInternalServerError, msg)
+		return
+	}
+}
+
+// Peter has sent you a repay request. You declinePayment.
+// Receive --> statusID
+func (a *App) declinePayment(w http.ResponseWriter, r *http.Request) {
+	var statusID int
+	err := json.NewDecoder(r.Body).Decode(&statusID)
+	if err != nil {
+		fmt.Printf("Error declining payment: %v", err)
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	if err := a.Payment.DeclinePayment(statusID); err != nil {
+		fmt.Printf("Error declining request: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Invalid request payload")
 		return
 	}
 }

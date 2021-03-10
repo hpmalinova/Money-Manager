@@ -45,6 +45,7 @@ type PaymentRepo interface {
 	FindPendingRequests(creditorID int) ([]model.LoanExt, error)
 
 	AcceptPayment(a *model.Accept) error
+	DeclinePayment(statusID int) error
 
 	FindCategoryName(statusID int) (categoryName string, err error)
 }
