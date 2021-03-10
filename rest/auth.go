@@ -28,7 +28,7 @@ func JwtVerify(next http.Handler) http.Handler {
 		claims := &model.UserToken{}
 
 		_, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
-			return []byte("secret"), nil
+			return []byte("secret"), nil //todo env
 		})
 
 		if err != nil {
