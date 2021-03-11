@@ -621,55 +621,55 @@ func (a *App) getCategoryByStatus(statusID int) string {
 //	}
 //}
 
-// Receive --> DebtorID
-// Return --> {StatusID, CreditorID, Amount, CategoryName, Description}
-func (a *App) getDebts(w http.ResponseWriter, r *http.Request) {
-	// todo userid
-	var userID int
+//// Receive --> DebtorID
+//// Return --> {StatusID, CreditorID, Amount, CategoryName, Description}
+//func (a *App) getDebts(w http.ResponseWriter, r *http.Request) {
+//	// todo userid
+//	var userID int
+//
+//	debts, err := a.Payment.FindActiveDebts(userID)
+//	if err != nil {
+//		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+//		return
+//	}
+//
+//	respondWithJSON(w, http.StatusOK, debts)
+//}
 
-	debts, err := a.Payment.FindActiveDebts(userID)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
-		return
-	}
+//// Receive --> CreditorID
+//// Return --> {DebtorID, Amount, Description}
+//func (a *App) getLoans(w http.ResponseWriter, r *http.Request) {
+//	// todo userid
+//	var userID int
+//
+//	loans, err := a.Payment.FindActiveLoans(userID)
+//	if err != nil {
+//		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+//		return
+//	}
+//
+//	respondWithJSON(w, http.StatusOK, loans)
+//}
 
-	respondWithJSON(w, http.StatusOK, debts)
-}
-
-// Receive --> CreditorID
-// Return --> {DebtorID, Amount, Description}
-func (a *App) getLoans(w http.ResponseWriter, r *http.Request) {
-	// todo userid
-	var userID int
-
-	loans, err := a.Payment.FindActiveLoans(userID)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
-		return
-	}
-
-	respondWithJSON(w, http.StatusOK, loans)
-}
-
-// I want to requestRepay => return my debt
-// Receive --> debtID, amount
-func (a *App) requestRepay(w http.ResponseWriter, r *http.Request) {
-	rr := &model.RepayRequest{}
-	err := json.NewDecoder(r.Body).Decode(rr)
-
-	if err != nil {
-		fmt.Printf("Error requesting repay: %v", err)
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
-		return
-	}
-
-	err = a.Payment.RequestRepay(rr.DebtID, rr.Amount)
-	if err != nil {
-		fmt.Printf("Error requesting repay: %v", err)
-		respondWithError(w, http.StatusInternalServerError, "Invalid transfer")
-		return
-	}
-}
+//// I want to requestRepay => return my debt
+//// Receive --> debtID, amount
+//func (a *App) requestRepay(w http.ResponseWriter, r *http.Request) {
+//	rr := &model.RepayRequest{}
+//	err := json.NewDecoder(r.Body).Decode(rr)
+//
+//	if err != nil {
+//		fmt.Printf("Error requesting repay: %v", err)
+//		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+//		return
+//	}
+//
+//	err = a.Payment.RequestRepay(rr.DebtID, rr.Amount)
+//	if err != nil {
+//		fmt.Printf("Error requesting repay: %v", err)
+//		respondWithError(w, http.StatusInternalServerError, "Invalid transfer")
+//		return
+//	}
+//}
 
 // The user waits for Peter to accept his payment
 // Receive --> debtorID
@@ -752,3 +752,6 @@ func (a *App) declinePayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+// TODO check history!
+// TODO statistics

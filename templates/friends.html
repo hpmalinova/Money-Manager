@@ -34,6 +34,13 @@
             <input type="submit" value="Add Friend" />
         </form>
 
+        <form method="GET" action="/index/debts">
+            <input type="submit" value="Show Debts" />
+        </form>
+        <form method="GET" action="/index/loans">
+            <input type="submit" value="Show Loans" />
+        </form>
+
         <h3>All friends: </h3>
         {{if .Friends.Usernames}}
             <ol>
@@ -48,6 +55,7 @@
         {{else}}
             <h4>You have no friends!</h4>
         {{end}}
+
     </div>
     <form method="GET" action="/index">
         <input type="submit" value="Back" />

@@ -79,6 +79,11 @@ const (
 	pay      = "pay"
 	giveLoan = "loan"
 	split    = "split"
+
+	debts = "debts"
+	repay = "repay"
+
+	loans = "loans"
 )
 
 func (a *App) initializeRoutes() {
@@ -102,7 +107,10 @@ func (a *App) initializeRoutes() {
 	s.HandleFunc("/"+giveLoan, a.giveLoan).Methods(http.MethodPost)
 	s.HandleFunc("/"+split, a.split).Methods(http.MethodPost)
 
-	//s.HandleFunc("/"+users, a.getFriends).Methods(http.MethodGet)
+	s.HandleFunc("/"+debts, a.getDebts).Methods(http.MethodGet)
+	//s.HandleFunc("/"+debts+"/"+repay+"/{id:[0-9]+}", a.requestRepay).Methods(http.MethodPost)
+
+	//s.HandleFunc("/"+loans, a.getLoans).Methods(http.MethodGet)
 }
 
 func (a *App) welcome(w http.ResponseWriter, r *http.Request) {
@@ -428,12 +436,6 @@ func (a *App) getStartCount(w http.ResponseWriter, r *http.Request) (int, error,
 
 // PAYMENT
 
-type PayTemplate struct {
-	Balance    int
-	Categories []model.Category
-	Friends    []string
-}
-
 // I want to pay 20lv for FOOD "Happy"
 // Receive --> user_id, amount, categoryName, description
 func (a *App) pay(w http.ResponseWriter, r *http.Request) {
@@ -457,7 +459,7 @@ func (a *App) pay(w http.ResponseWriter, r *http.Request) {
 		friendIDs, _ := a.Friendship.Find(0, 100, userID) // TODO fix range
 		friendUsernames, _ := a.convertToUsername(friendIDs)
 
-		_ = a.Template.ExecuteTemplate(w, pay, PayTemplate{
+		_ = a.Template.ExecuteTemplate(w, pay, model.PayTemplate{
 			Balance:    balance,
 			Categories: categories,
 			Friends:    friendUsernames,
@@ -596,7 +598,7 @@ func (a *App) earn(w http.ResponseWriter, r *http.Request) {
 		friendIDs, _ := a.Friendship.Find(0, 100, userID) // TODO fix range
 		friendUsernames, _ := a.convertToUsername(friendIDs)
 
-		_ = a.Template.ExecuteTemplate(w, earn, PayTemplate{
+		_ = a.Template.ExecuteTemplate(w, earn, model.PayTemplate{
 			Balance:    balance,
 			Categories: categories,
 			Friends:    friendUsernames,
@@ -629,5 +631,96 @@ func (a *App) earn(w http.ResponseWriter, r *http.Request) {
 	default:
 		_, _ = fmt.Fprintf(w, "Sorry, only GET and POST methods are supported.")
 	}
-
 }
+
+// Receive --> DebtorID
+// Return --> {StatusID, CreditorID, Amount, CategoryName, Description}
+func (a *App) getDebts(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/index/"+debts {
+		fmt.Println(r.URL.Path)
+		http.Error(w, "404 not found.", http.StatusNotFound)
+		return
+	}
+
+	switch r.Method {
+	case "GET":
+		user := r.Context().Value("user").(*model.UserToken)
+		userID, _ := strconv.Atoi(user.UserID)
+
+		// Show balance
+		balance, _ := a.Payment.CheckBalance(userID)
+
+		// Show debts:
+		activeDebts, err := a.Payment.FindActiveDebts(userID)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		ds := make([]model.DebtTemplate, 0, len(activeDebts))
+		for _, d := range activeDebts {
+			creditor, _ := a.Users.FindByID(d.CreditorID)
+			ds = append(ds, model.DebtTemplate{
+				StatusID:    d.StatusID,
+				Creditor:    creditor.Username,
+				Amount:      d.Amount,
+				Description: d.Description,
+			})
+		}
+
+		// Show pending debts:
+		pendingDebts, err := a.Payment.FindPendingDebts(userID)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		pds := make([]model.DebtTemplate, 0, len(pendingDebts))
+		for _, pd := range pendingDebts {
+			creditor, _ := a.Users.FindByID(pd.CreditorID)
+			pds = append(pds, model.DebtTemplate{
+				Creditor:    creditor.Username,
+				Amount:      pd.Amount,
+				Description: pd.Description,
+			})
+		}
+
+		_ = a.Template.ExecuteTemplate(w, debts, model.DebtsTemplate{Active: ds, Pending: pds, Balance: balance})
+		//case "POST":
+	}
+}
+
+//// Receive --> CreditorID
+//// Return --> {DebtorID, Amount, Description}
+//func (a *App) getLoans(w http.ResponseWriter, r *http.Request) {
+//	// todo userid
+//	var userID int
+//
+//	loans, err := a.Payment.FindActiveLoans(userID)
+//	if err != nil {
+//		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+//		return
+//	}
+//
+//	respondWithJSON(w, http.StatusOK, loans)
+//}
+//
+//// I want to requestRepay => return my debt
+//// Receive --> debtID, amount
+//func (a *App) requestRepay(w http.ResponseWriter, r *http.Request) {
+//	rr := &model.RepayRequest{}
+//	err := json.NewDecoder(r.Body).Decode(rr)
+//
+//	if err != nil {
+//		fmt.Printf("Error requesting repay: %v", err)
+//		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+//		return
+//	}
+//
+//	err = a.Payment.RequestRepay(rr.DebtID, rr.Amount)
+//	if err != nil {
+//		fmt.Printf("Error requesting repay: %v", err)
+//		respondWithError(w, http.StatusInternalServerError, "Invalid transfer")
+//		return
+//	}
+//}

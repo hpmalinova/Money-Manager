@@ -1,0 +1,61 @@
+{{define "debts"}}
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Debts</title>
+    </head>
+    <body>
+    <h3>You have {{.Balance}}lv.</h3>
+    <div>
+        {{if .Pending}}
+            <h3>Pending Debts: </h3>
+            <ol>
+                {{range .Pending}}
+                    <li>
+                        <div class="pending">
+                            <p class="username">You are waiting for{{.Creditor}} to accept your payment:
+                                {{.Amount}}lv
+                                {{if .Description}}
+                                    for {{.Description}}
+                                {{end}}
+                            </p>
+                        </div>
+                    </li>
+                {{end}}
+            </ol>
+{{/*        {{else}}*/}}
+{{/*            <h4>You have no pending requests!</h4>*/}}
+        {{end}}
+
+        <h3>All debts: </h3>
+        {{if .Active}}
+            <ol>
+                {{range .Active}}
+                    <li>
+                        <div class="active">
+                            <p class="username">You owe {{.Creditor}} {{.Amount}}lv
+                                {{if .Description}}
+                                    for {{.Description}}
+{{/*                                    todo check if works*/}}
+                                {{end}}
+                            </p>
+                            <form method="POST" action="/index/debts/repay/{{.StatusID}}">
+                                <label>Amount: </label><input name="amount" type="number" value="" min="1" max="{{.Balance}}" required/>
+                                <input type="submit" value="Repay" />
+                            </form>
+                        </div>
+                    </li>
+                {{end}}
+            </ol>
+        {{else}}
+            <h4>You don`t owe any money!</h4>
+        {{end}}
+
+    </div>
+    <form method="GET" action="/index">
+        <input type="submit" value="Back" />
+    </form>
+    </body>
+    </html>
+{{end}}
