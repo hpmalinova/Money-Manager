@@ -579,47 +579,47 @@ func (a *App) earn(w http.ResponseWriter, r *http.Request) {
 //	}
 //}
 
-// I want to split money with George for FOOD "Happy"
-// Receive --> creditor_id, debtor_id, amount, categoryName, description
-func (a *App) split(w http.ResponseWriter, r *http.Request) {
-	var userID int // TODO
-
-	g := model.Give{}
-	err := json.NewDecoder(r.Body).Decode(g)
-	if err != nil {
-		fmt.Printf("Error splitting money: %v", err)
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
-		return
-	}
-
-	var loan = "loan"
-	loanC, err := a.Categories.FindByName(loan)
-	if err != nil {
-		msg := fmt.Sprintf("No category: %s", loan)
-		respondWithError(w, http.StatusInternalServerError, msg)
-		return
-	}
-
-	debtC, err := a.Categories.FindByName(g.CategoryName)
-	if err != nil {
-		msg := fmt.Sprintf("No category: %s", g.CategoryName)
-		respondWithError(w, http.StatusInternalServerError, msg)
-		return
-	}
-
-	t := &model.Transfer{
-		CreditorID: userID,
-		LoanID:     loanC.ID,
-		DebtID:     debtC.ID,
-		Loan:       g.Loan,
-	}
-
-	if err := a.Payment.Split(t); err != nil {
-		msg := fmt.Sprintf("Error in splitting money: %v", err.Error())
-		respondWithError(w, http.StatusInternalServerError, msg)
-		return
-	}
-}
+//// I want to split money with George for FOOD "Happy"
+//// Receive --> creditor_id, debtor_id, amount, categoryName, description
+//func (a *App) split(w http.ResponseWriter, r *http.Request) {
+//	var userID int // TODO
+//
+//	g := model.Give{}
+//	err := json.NewDecoder(r.Body).Decode(g)
+//	if err != nil {
+//		fmt.Printf("Error splitting money: %v", err)
+//		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+//		return
+//	}
+//
+//	var loan = "loan"
+//	loanC, err := a.Categories.FindByName(loan)
+//	if err != nil {
+//		msg := fmt.Sprintf("No category: %s", loan)
+//		respondWithError(w, http.StatusInternalServerError, msg)
+//		return
+//	}
+//
+//	debtC, err := a.Categories.FindByName(g.CategoryName)
+//	if err != nil {
+//		msg := fmt.Sprintf("No category: %s", g.CategoryName)
+//		respondWithError(w, http.StatusInternalServerError, msg)
+//		return
+//	}
+//
+//	t := &model.Transfer{
+//		CreditorID: userID,
+//		LoanID:     loanC.ID,
+//		DebtID:     debtC.ID,
+//		Loan:       g.Loan,
+//	}
+//
+//	if err := a.Payment.Split(t); err != nil {
+//		msg := fmt.Sprintf("Error in splitting money: %v", err.Error())
+//		respondWithError(w, http.StatusInternalServerError, msg)
+//		return
+//	}
+//}
 
 // Receive --> DebtorID
 // Return --> {StatusID, CreditorID, Amount, CategoryName, Description}

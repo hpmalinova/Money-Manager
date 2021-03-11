@@ -75,9 +75,10 @@ const (
 	users   = "users"
 	friends = "friends"
 
-	earn = "earn"
-	pay  = "pay"
+	earn     = "earn"
+	pay      = "pay"
 	giveLoan = "loan"
+	split = "split"
 )
 
 func (a *App) initializeRoutes() {
@@ -99,9 +100,9 @@ func (a *App) initializeRoutes() {
 	//s.HandleFunc("/"+earn, a.addFriend).Methods(http.MethodPost, http.MethodPost)
 	s.HandleFunc("/"+pay, a.pay).Methods(http.MethodGet, http.MethodPost)
 	s.HandleFunc("/"+giveLoan, a.giveLoan).Methods(http.MethodPost)
+	s.HandleFunc("/"+split, a.split).Methods(http.MethodPost)
 
 	//s.HandleFunc("/"+users, a.getFriends).Methods(http.MethodGet)
-
 }
 
 func (a *App) welcome(w http.ResponseWriter, r *http.Request) {
@@ -430,7 +431,7 @@ func (a *App) getStartCount(w http.ResponseWriter, r *http.Request) (int, error,
 type PayTemplate struct {
 	Balance    int
 	Categories []model.Category
-	Friends []string
+	Friends    []string
 }
 
 // I want to pay 20lv for FOOD "Happy"
@@ -453,13 +454,13 @@ func (a *App) pay(w http.ResponseWriter, r *http.Request) {
 		categories, _ := a.Categories.FindExpenses()
 
 		// Show Friends
-		friendIDs, _ := a.Friendship.Find(0,100,userID) // TODO fix range
+		friendIDs, _ := a.Friendship.Find(0, 100, userID) // TODO fix range
 		friendUsernames, _ := a.convertToUsername(friendIDs)
 
 		_ = a.Template.ExecuteTemplate(w, pay, PayTemplate{
 			Balance:    balance,
 			Categories: categories,
-			Friends: friendUsernames,
+			Friends:    friendUsernames,
 		})
 	case "POST":
 		userID, _ := strconv.Atoi(r.Context().Value("user").(*model.UserToken).UserID)
@@ -471,10 +472,8 @@ func (a *App) pay(w http.ResponseWriter, r *http.Request) {
 		amountS := r.FormValue("amount")
 		amount, _ := strconv.Atoi(amountS)
 		categoryName := r.FormValue("category")
-		description := r.FormValue("description")
-
-		// Find CategoryID
 		category, _ := a.Categories.FindByName(categoryName)
+		description := r.FormValue("description")
 
 		h := &model.History{
 			UserID:      userID,
@@ -506,8 +505,6 @@ func (a *App) giveLoan(w http.ResponseWriter, r *http.Request) {
 	friend, _ := a.Users.FindByUsername(friendName)
 	amountS := r.FormValue("amount")
 	amount, _ := strconv.Atoi(amountS)
-	//categoryName := r.FormValue("category")
-	//category, _ := a.Categories.FindByName(categoryName)
 	description := r.FormValue("description")
 
 	var loan = "loan"
@@ -529,6 +526,46 @@ func (a *App) giveLoan(w http.ResponseWriter, r *http.Request) {
 
 	if err := a.Payment.GiveLoan(t); err != nil {
 		msg := fmt.Sprintf("Error in giving money: %v", err.Error())
+		respondWithError(w, http.StatusInternalServerError, msg)
+		return
+	}
+
+	http.Redirect(w, r, "/index/pay", http.StatusFound)
+}
+
+// I want to split money with George for FOOD "Happy"
+// Receive --> creditor_id, debtor_id, amount, categoryName, description
+func (a *App) split(w http.ResponseWriter, r *http.Request) {
+	userID, _ := strconv.Atoi(r.Context().Value("user").(*model.UserToken).UserID)
+
+	if err := r.ParseForm(); err != nil {
+		_, _ = fmt.Fprintf(w, "ParseForm() err: %v", err)
+		return
+	}
+	friendName := r.FormValue("to")
+	friend, _ := a.Users.FindByUsername(friendName)
+	amountS := r.FormValue("amount")
+	amount, _ := strconv.Atoi(amountS)
+	categoryName := r.FormValue("category")
+	description := r.FormValue("description")
+
+	var loan = "loan"
+	loanC, _ := a.Categories.FindByName(loan)
+	debtC, _ := a.Categories.FindByName(categoryName)
+
+	t := &model.Transfer{
+		CreditorID: userID,
+		LoanID:     loanC.ID,
+		DebtID:     debtC.ID,
+		Loan: model.Loan{
+			DebtorID:    friend.ID,
+			Amount:      amount,
+			Description: description,
+		},
+	}
+
+	if err := a.Payment.Split(t); err != nil {
+		msg := fmt.Sprintf("Error in splitting money: %v", err.Error())
 		respondWithError(w, http.StatusInternalServerError, msg)
 		return
 	}
