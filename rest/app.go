@@ -14,6 +14,8 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strconv"
+	"time"
 )
 
 type App struct {
@@ -63,44 +65,34 @@ func (a *App) Run(port string) {
 }
 
 const (
+	welcome  = "welcome"
 	register = "register"
 	login    = "login"
+	index    = "index"
+	logout   = "logout"
+
+	users = "users"
 )
 
 func (a *App) initializeRoutes() {
-	//a.Router.HandleFunc("/", hello).Methods(http.MethodGet)
-
+	a.Router.HandleFunc("/", a.welcome).Methods(http.MethodGet)
 	a.Router.HandleFunc("/"+register, a.registerHandler).Methods(http.MethodGet, http.MethodPost)
 	a.Router.HandleFunc("/"+login, a.loginHandler).Methods(http.MethodGet, http.MethodPost)
-	//a.Router.HandleFunc("/register", a.register).Methods(http.MethodGet)
-	//a.Router.HandleFunc("/register", a.register).Methods(http.MethodPost)
 
-	// todo delete from here
-	a.Router.HandleFunc("/users", a.getUsers).Methods(http.MethodGet)
+	// Auth route
+	s := a.Router.PathPrefix("/" + index).Subrouter()
+	s.Use(JwtVerify) // Middleware
+	s.HandleFunc("", a.index).Methods(http.MethodGet)
+	s.HandleFunc("/"+logout, a.logout).Methods(http.MethodPost)
+	s.HandleFunc("/"+users, a.getUsers).Methods(http.MethodGet)
+}
 
-	//// Auth route
-	//s := a.Router.PathPrefix("/home").Subrouter()
-	//s.Use(JwtVerify) // Middleware
-	//s.HandleFunc("/users", a.getUsers).Methods(http.MethodGet)
-	//s.HandleFunc("/users/{id:[0-9]+}", a.getUser).Methods(http.MethodGet)
-	//
-	//s.HandleFunc("/friends", a.addFriend).Methods(http.MethodPost)
-	//s.HandleFunc("/friends/{id:[0-9]+}", a.getFriends).Methods(http.MethodGet)
-	//s.HandleFunc("/friends/{id:[0-9]+}/pending", a.getPending).Methods(http.MethodGet)
-	//s.HandleFunc("/friends/{id:[0-9]+}/pending/{friend-id:[0-9]+}/accept", a.acceptInvite).Methods(http.MethodPut)  //todo uri + check put
-	//s.HandleFunc("/friends/{id:[0-9]+}/pending/{friend-id:[0-9]+}/accept", a.declineInvite).Methods(http.MethodPut) //todo
-	//
-	//s.HandleFunc("/groups", a.addGroup).Methods(http.MethodPost)
-	//s.HandleFunc("/groups/{id:[0-9]+}", a.getGroups).Methods(http.MethodGet)
-	////s.HandleFunc("/groups/{id:[0-9]+}/split", a.payForGroup).Methods(http.MethodPost) // TODO split money between group members
-	//
-	//s.HandleFunc("/categories", a.getCategories).Methods(http.MethodGet)
-
+func (a *App) welcome(w http.ResponseWriter, r *http.Request) {
+	_ = a.Template.ExecuteTemplate(w, welcome, nil)
 }
 
 func (a *App) registerHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/"+register {
-		fmt.Println(r.URL.Path)
 		http.Error(w, "404 not found.", http.StatusNotFound)
 		return
 	}
@@ -113,16 +105,14 @@ func (a *App) registerHandler(w http.ResponseWriter, r *http.Request) {
 			_, _ = fmt.Fprintf(w, "ParseForm() err: %v", err)
 			return
 		}
-		name := r.FormValue("username")
-		password := r.FormValue("password")
-		fmt.Println(name, password)
 
-		user := &model.User{Username: name, Password: password}
+		username := r.FormValue("username")
+		password := r.FormValue("password")
+		user := &model.User{Username: username, Password: password}
 
 		// Validate User struct
 		err := a.Validator.Struct(user)
 		if err != nil {
-			// translate all error at once
 			errs := err.(validator.ValidationErrors)
 			respondWithValidationError(errs.Translate(a.Translator), w)
 			return
@@ -141,10 +131,8 @@ func (a *App) registerHandler(w http.ResponseWriter, r *http.Request) {
 			respondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		// remove user password
-		user.Password = ""
 
-		respondWithJSON(w, http.StatusCreated, user)
+		http.Redirect(w, r, "/", http.StatusFound)
 	default:
 		_, _ = fmt.Fprintf(w, "Sorry, only GET and POST methods are supported.")
 	}
@@ -165,11 +153,10 @@ func (a *App) loginHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "ParseForm() err: %v", err)
 			return
 		}
-		name := r.FormValue("username")
+		username := r.FormValue("username")
 		password := r.FormValue("password")
-		fmt.Println(name, password)
+		user := &model.UserLogin{Username: username, Password: password}
 
-		user := &model.UserLogin{Username: name, Password: password}
 		err := a.Validator.Struct(user)
 		if err != nil {
 			errs := err.(validator.ValidationErrors)
@@ -179,10 +166,102 @@ func (a *App) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 		resp, err := a.checkCredentials(w, user.Username, user.Password)
 		if err == nil {
-			//_ = json.NewEncoder(w).Encode(resp)
-			respondWithJSON(w, http.StatusOK, resp)
+			tokenString := resp["token"]
+			http.SetCookie(w, &http.Cookie{
+				Name:     "token",
+				Value:    tokenString,
+				Expires:  time.Now().Add(30 * time.Minute),
+				HttpOnly: true,
+				//MaxAge: 60*60,
+			})
 		}
+
+		http.Redirect(w, r, "/"+index, http.StatusFound)
 	default:
 		fmt.Fprintf(w, "Sorry, only GET and POST methods are supported.")
 	}
+}
+
+func (a *App) index(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	username := ctx.Value("user").(*model.UserToken).Username
+	a.Template.ExecuteTemplate(w, index, username)
+}
+
+//todo
+func (a *App) logout(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("logout")
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    "",
+		Expires:  time.Unix(0, 0),
+		HttpOnly: true,
+		//MaxAge: 0,
+	})
+
+	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+//func (a *App) getUsers(w http.ResponseWriter, r *http.Request) {
+//	users, err := a.Users.Find(0, 200)
+//	if err != nil {
+//		respondWithError(w, http.StatusInternalServerError, err.Error())
+//		return
+//	}
+//	// remove user passwords
+//	for i := range users {
+//		users[i].Password = ""
+//	}
+//	respondWithJSON(w, http.StatusOK, users)
+//}
+func (a *App) getUsers(w http.ResponseWriter, r *http.Request) {
+	// TODO
+	//count, err, start, done := a.getStartCount(w, r)
+	//if done {
+	//	return
+	//}
+	start,count := 0,10
+
+	users, err := a.Users.Find(start, count)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	// remove user passwords
+	for i := range users {
+		users[i].Password = ""
+	}
+
+	a.Template.ExecuteTemplate(w,"showUsers", model.Users{Users: users})
+
+	//respondWithJSON(w, http.StatusOK, users)
+}
+
+//todo
+func (a *App) getStartCount(w http.ResponseWriter, r *http.Request) (int, error, int, bool) {
+	count, err := strconv.Atoi(r.FormValue("count"))
+	if err != nil && r.FormValue("count") != "" {
+		respondWithError(w, http.StatusBadRequest, "Invalid request count parameter")
+		return 0, nil, 0, true
+	}
+	start, err := strconv.Atoi(r.FormValue("start"))
+	if err != nil && r.FormValue("start") != "" {
+		respondWithError(w, http.StatusBadRequest, "Invalid request start parameter")
+		return 0, nil, 0, true
+	}
+
+	const (
+		minOffset = 0
+		minLimit  = 1
+		maxLimit  = 10
+	)
+
+	start--
+	if count > maxLimit || count < minLimit {
+		count = maxLimit
+	}
+	if start < minOffset {
+		start = minOffset
+	}
+	return count, err, start, false
 }

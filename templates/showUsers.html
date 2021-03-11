@@ -1,0 +1,23 @@
+{{define "showUsers"}}
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Users</title>
+    </head>
+    <body>
+    <div>
+        <h3>All users: </h3>
+        <ol>
+        {{range .Users}}
+            <li>
+            <div class="user">
+                <p class="username">{{.Username}}</p>
+            </div>
+            </li>
+        {{end}}
+        </ol>
+    </div>
+    </body>
+    </html>
+{{end}}

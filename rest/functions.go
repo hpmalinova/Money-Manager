@@ -31,13 +31,13 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (a *App) checkCredentials(w http.ResponseWriter, username, password string) (map[string]interface{}, error) {
+func (a *App) checkCredentials(w http.ResponseWriter, username, password string) (map[string]string, error) {
 	user, err := a.Users.FindByUsername(username)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "Username not found")
 		return nil, err
 	}
-	expiresAt := time.Now().Add(time.Minute * 10).Unix()
+	expiresAt := time.Now().Add(time.Minute * 30).Unix()
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	if err != nil && err == bcrypt.ErrMismatchedHashAndPassword { //Password does not match!
@@ -46,31 +46,20 @@ func (a *App) checkCredentials(w http.ResponseWriter, username, password string)
 	}
 
 	claims := &model.UserToken{
-		UserID:   string(user.ID),
+		UserID:   strconv.Itoa(user.ID),
 		Username: user.Username,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expiresAt,
-			//Issuer:    "test",
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
 	tokenString, error := token.SignedString([]byte("secret"))
 	if error != nil {
-		// TODO respond with error?
 		fmt.Println(error)
 	}
 
-	user.Password = ""
-	var resp = map[string]interface{}{"token": tokenString, "user": user}
-
-	////var resp = map[string]interface{}{"status": false, "message": "logged in"}
-	//resp["token"] = tokenString //Store the token in the response
-	//// remove user password
-	//user.Password = ""
-	//
-	//resp["user"] = user
+	var resp = map[string]string{"token": tokenString, "username": user.Username, "id": strconv.Itoa(user.ID)}
 	return resp, nil
 }
 
@@ -117,42 +106,46 @@ func (a *App) register(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusCreated, user)
 }
 
-func (a *App) getUsers(w http.ResponseWriter, r *http.Request) {
-	count, err := strconv.Atoi(r.FormValue("count"))
-	if err != nil && r.FormValue("count") != "" {
-		respondWithError(w, http.StatusBadRequest, "Invalid request count parameter")
-		return
-	}
-	start, err := strconv.Atoi(r.FormValue("start"))
-	if err != nil && r.FormValue("start") != "" {
-		respondWithError(w, http.StatusBadRequest, "Invalid request start parameter")
-		return
-	}
-
-	const (
-		minOffset = 0
-		minLimit  = 1
-		maxLimit  = 10
-	)
-
-	start--
-	if count > maxLimit || count < minLimit {
-		count = maxLimit
-	}
-	if start < minOffset {
-		start = minOffset
-	}
-	users, err := a.Users.Find(start, count)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	// remove user passwords
-	for i := range users {
-		users[i].Password = ""
-	}
-	respondWithJSON(w, http.StatusOK, users)
-}
+//func (a *App) getUsers(w http.ResponseWriter, r *http.Request) {
+//	//ctx := r.Context()
+//	//user := ctx.Value("user")
+//	//fmt.Println("CONTEXT:", user)
+//
+//	count, err := strconv.Atoi(r.FormValue("count"))
+//	if err != nil && r.FormValue("count") != "" {
+//		respondWithError(w, http.StatusBadRequest, "Invalid request count parameter")
+//		return
+//	}
+//	start, err := strconv.Atoi(r.FormValue("start"))
+//	if err != nil && r.FormValue("start") != "" {
+//		respondWithError(w, http.StatusBadRequest, "Invalid request start parameter")
+//		return
+//	}
+//
+//	const (
+//		minOffset = 0
+//		minLimit  = 1
+//		maxLimit  = 10
+//	)
+//
+//	start--
+//	if count > maxLimit || count < minLimit {
+//		count = maxLimit
+//	}
+//	if start < minOffset {
+//		start = minOffset
+//	}
+//	users, err := a.Users.Find(start, count)
+//	if err != nil {
+//		respondWithError(w, http.StatusInternalServerError, err.Error())
+//		return
+//	}
+//	// remove user passwords
+//	for i := range users {
+//		users[i].Password = ""
+//	}
+//	respondWithJSON(w, http.StatusOK, users)
+//}
 
 func (a *App) getUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)

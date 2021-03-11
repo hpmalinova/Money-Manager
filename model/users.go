@@ -18,3 +18,7 @@ type UserLogin struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
+
+type Users struct {
+	Users []User
+}

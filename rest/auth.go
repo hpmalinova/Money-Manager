@@ -5,29 +5,30 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/hpmalinova/Money-Manager/model"
 	"net/http"
-	"strings"
 )
 
 func JwtVerify(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		const BEARER_SCHEMA = "Bearer "
-		var header = r.Header.Get("Authorization") //Grab the token from the header
-
-		var token string
-		if header == "" || len(header) <= len(BEARER_SCHEMA) {
-			respondWithError(w, http.StatusUnauthorized, "Missing auth token")
+		t, err := r.Cookie("token")
+		if err != nil {
+			if err == http.ErrNoCookie {
+				// If the cookie is not set, return an unauthorized status
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			// For any other type of error, return a bad request status
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		token = header[len(BEARER_SCHEMA):]
-		token = strings.TrimSpace(token)
 
+		token := t.Value
 		if token == "" {
 			respondWithError(w, http.StatusUnauthorized, "Missing auth token")
 			return
 		}
 		claims := &model.UserToken{}
 
-		_, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
+		_, err = jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
 			return []byte("secret"), nil //todo env
 		})
 
