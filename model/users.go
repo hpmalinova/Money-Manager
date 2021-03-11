@@ -22,3 +22,8 @@ type UserLogin struct {
 type Users struct {
 	Users []User
 }
+
+type UserWallet struct {
+	Username string
+	Balance  int
+}

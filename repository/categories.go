@@ -12,8 +12,8 @@ type CategoryRepoMysql struct {
 }
 
 const (
-	expenses = "expenses"
-	incomes  = "incomes"
+	expense = "expense"
+	income  = "income"
 )
 
 func NewCategoryRepoMysql(user, password, dbname string) *CategoryRepoMysql {
@@ -40,7 +40,7 @@ func (c *CategoryRepoMysql) FindByName(categoryName string) (*model.Category, er
 
 func (c *CategoryRepoMysql) FindExpenses() ([]model.Category, error) {
 	statement := `SELECT id, c_type, name FROM categories WHERE c_type = ?`
-	return c.findByType(statement, expenses)
+	return c.findByType(statement, expense)
 	//rows, err := c.db.Query(statement)
 	//if err != nil {
 	//	return nil, err
@@ -65,7 +65,7 @@ func (c *CategoryRepoMysql) FindExpenses() ([]model.Category, error) {
 
 func (c *CategoryRepoMysql) FindIncomes() ([]model.Category, error) {
 	statement := `SELECT id, c_type, name FROM categories WHERE c_type = ?`
-	return c.findByType(statement, incomes)
+	return c.findByType(statement, income)
 }
 
 func (c *CategoryRepoMysql) findByType(statement string, cType string) ([]model.Category, error) {

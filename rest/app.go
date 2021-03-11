@@ -74,6 +74,9 @@ const (
 
 	users   = "users"
 	friends = "friends"
+
+	earn = "earn"
+	pay  = "pay"
 )
 
 func (a *App) initializeRoutes() {
@@ -91,6 +94,9 @@ func (a *App) initializeRoutes() {
 	s.HandleFunc("/"+friends+"/accept/{username}", a.acceptInvite).Methods(http.MethodPost)
 	s.HandleFunc("/"+friends+"/decline/{username}", a.declineInvite).Methods(http.MethodPost)
 	s.HandleFunc("/"+friends+"/add", a.addFriend).Methods(http.MethodPost)
+
+	//s.HandleFunc("/"+earn, a.addFriend).Methods(http.MethodPost, http.MethodPost)
+	s.HandleFunc("/"+pay, a.pay).Methods(http.MethodGet, http.MethodPost)
 
 	//s.HandleFunc("/"+users, a.getFriends).Methods(http.MethodGet)
 
@@ -140,6 +146,10 @@ func (a *App) registerHandler(w http.ResponseWriter, r *http.Request) {
 			respondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+
+		// Create wallet
+		err = a.Payment.CreateWallet(user.ID)
+		log.Println(err)
 
 		http.Redirect(w, r, "/", http.StatusFound)
 	default:
@@ -193,8 +203,15 @@ func (a *App) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) index(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	username := ctx.Value("user").(*model.UserToken).Username
-	a.Template.ExecuteTemplate(w, index, username)
+	user := ctx.Value("user").(*model.UserToken)
+	userID, _ := strconv.Atoi(user.UserID)
+	// Show balance
+	balance, _ := a.Payment.CheckBalance(userID)
+
+	_ = a.Template.ExecuteTemplate(w, index, model.UserWallet{
+		Username: user.Username,
+		Balance:  balance,
+	})
 }
 
 //todo
@@ -230,38 +247,9 @@ func (a *App) getUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.Template.ExecuteTemplate(w, "showUsers", model.Users{Users: users})
-
-	//respondWithJSON(w, http.StatusOK, users)
 }
 
-//todo
-func (a *App) getStartCount(w http.ResponseWriter, r *http.Request) (int, error, int, bool) {
-	count, err := strconv.Atoi(r.FormValue("count"))
-	if err != nil && r.FormValue("count") != "" {
-		respondWithError(w, http.StatusBadRequest, "Invalid request count parameter")
-		return 0, nil, 0, true
-	}
-	start, err := strconv.Atoi(r.FormValue("start"))
-	if err != nil && r.FormValue("start") != "" {
-		respondWithError(w, http.StatusBadRequest, "Invalid request start parameter")
-		return 0, nil, 0, true
-	}
-
-	const (
-		minOffset = 0
-		minLimit  = 1
-		maxLimit  = 10
-	)
-
-	start--
-	if count > maxLimit || count < minLimit {
-		count = maxLimit
-	}
-	if start < minOffset {
-		start = minOffset
-	}
-	return count, err, start, false
-}
+// FRIENDS
 
 func (a *App) getFriends(w http.ResponseWriter, r *http.Request) {
 	userID, _ := strconv.Atoi(r.Context().Value("user").(*model.UserToken).UserID)
@@ -404,4 +392,96 @@ func (a *App) convertToUsername(ids []int) ([]string, error) {
 		return nil, err
 	}
 	return usernames, nil
+}
+
+//todo
+func (a *App) getStartCount(w http.ResponseWriter, r *http.Request) (int, error, int, bool) {
+	count, err := strconv.Atoi(r.FormValue("count"))
+	if err != nil && r.FormValue("count") != "" {
+		respondWithError(w, http.StatusBadRequest, "Invalid request count parameter")
+		return 0, nil, 0, true
+	}
+	start, err := strconv.Atoi(r.FormValue("start"))
+	if err != nil && r.FormValue("start") != "" {
+		respondWithError(w, http.StatusBadRequest, "Invalid request start parameter")
+		return 0, nil, 0, true
+	}
+
+	const (
+		minOffset = 0
+		minLimit  = 1
+		maxLimit  = 10
+	)
+
+	start--
+	if count > maxLimit || count < minLimit {
+		count = maxLimit
+	}
+	if start < minOffset {
+		start = minOffset
+	}
+	return count, err, start, false
+}
+
+// PAYMENT
+
+type PayTemplate struct {
+	Balance    int
+	Categories []model.Category
+}
+
+// I want to pay 20lv for FOOD "Happy"
+// Receive --> user_id, amount, categoryName, description
+func (a *App) pay(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/index/"+pay {
+		fmt.Println(r.URL.Path)
+		http.Error(w, "404 not found.", http.StatusNotFound)
+		return
+	}
+
+	switch r.Method {
+	case "GET":
+		ctx := r.Context()
+		user := ctx.Value("user").(*model.UserToken)
+		userID, _ := strconv.Atoi(user.UserID)
+		// Show balance
+		balance, _ := a.Payment.CheckBalance(userID)
+
+		// Show Expense Categories
+		categories, _ := a.Categories.FindExpenses()
+
+		_ = a.Template.ExecuteTemplate(w, pay, PayTemplate{
+			Balance:    balance,
+			Categories: categories,
+		})
+	case "POST":
+		userID, _ := strconv.Atoi(r.Context().Value("user").(*model.UserToken).UserID)
+
+		if err := r.ParseForm(); err != nil {
+			_, _ = fmt.Fprintf(w, "ParseForm() err: %v", err)
+			return
+		}
+		amountS := r.FormValue("amount")
+		amount, _ := strconv.Atoi(amountS)
+		categoryName := r.FormValue("category")
+		description := r.FormValue("description")
+
+		// Find CategoryID
+		category, _ := a.Categories.FindByName(categoryName)
+
+		h := &model.History{
+			UserID:      userID,
+			Amount:      amount,
+			CategoryID:  category.ID,
+			Description: description,
+		}
+
+		err := a.Payment.Pay(h)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, err.Error())
+		}
+		http.Redirect(w, r, "/index/pay", http.StatusFound)
+	default:
+		_, _ = fmt.Fprintf(w, "Sorry, only GET and POST methods are supported.")
+	}
 }

@@ -471,36 +471,36 @@ func (a *App) getCategoryByStatus(statusID int) string {
 
 // I want to pay 20lv for FOOD "Happy"
 // Receive --> user_id, amount, categoryName, description
-func (a *App) pay(w http.ResponseWriter, r *http.Request) {
-	// todo userID and remove from Pay model
-	payModel := &model.Pay{}
-	err := json.NewDecoder(r.Body).Decode(payModel)
-
-	if err != nil {
-		fmt.Printf("Error paying : %v", err)
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
-		return
-	}
-
-	// Find CategoryID
-	category, err := a.Categories.FindByName(payModel.CategoryName)
-	if err != nil {
-		message := fmt.Sprintf("There is no category %s: %v", payModel.CategoryName, err.Error())
-		respondWithError(w, http.StatusBadRequest, message)
-	}
-
-	h := &model.History{
-		UserID:      payModel.UserID,
-		Amount:      payModel.Amount,
-		CategoryID:  category.ID,
-		Description: payModel.Description,
-	}
-
-	err = a.Payment.Pay(h)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, err.Error())
-	}
-}
+//func (a *App) pay(w http.ResponseWriter, r *http.Request) {
+//	// todo userID and remove from Pay model
+//	payModel := &model.Pay{}
+//	err := json.NewDecoder(r.Body).Decode(payModel)
+//
+//	if err != nil {
+//		fmt.Printf("Error paying : %v", err)
+//		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+//		return
+//	}
+//
+//	// Find CategoryID
+//	category, err := a.Categories.FindByName(payModel.CategoryName)
+//	if err != nil {
+//		message := fmt.Sprintf("There is no category %s: %v", payModel.CategoryName, err.Error())
+//		respondWithError(w, http.StatusBadRequest, message)
+//	}
+//
+//	h := &model.History{
+//		UserID:      payModel.UserID,
+//		Amount:      payModel.Amount,
+//		CategoryID:  category.ID,
+//		Description: payModel.Description,
+//	}
+//
+//	err = a.Payment.Pay(h)
+//	if err != nil {
+//		respondWithError(w, http.StatusBadRequest, err.Error())
+//	}
+//}
 
 // I earn 1000lv from SALARY "Job"
 // Receive --> user_id, amount, categoryName, description
@@ -549,7 +549,7 @@ func (a *App) giveLoan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var loan = "Loan"
+	var loan = "loan"
 	loanC, err := a.Categories.FindByName(loan)
 	if err != nil {
 		msg := fmt.Sprintf("No category: %s", loan)
@@ -557,7 +557,7 @@ func (a *App) giveLoan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var debt = "Debt"
+	var debt = "debt"
 	debtC, err := a.Categories.FindByName(debt)
 	if err != nil {
 		msg := fmt.Sprintf("No category: %s", debt)
@@ -592,7 +592,7 @@ func (a *App) split(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var loan = "Loan"
+	var loan = "loan"
 	loanC, err := a.Categories.FindByName(loan)
 	if err != nil {
 		msg := fmt.Sprintf("No category: %s", loan)
@@ -716,7 +716,7 @@ func (a *App) acceptPayment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	expenseC := a.getCategoryByName(a.getCategoryByStatus(statusID))
-	repayC := a.getCategoryByName("Repay")
+	repayC := a.getCategoryByName("receive")
 
 	//var repay = "Repay"
 	//repayC, err := a.Categories.FindByName(repay)

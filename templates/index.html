@@ -10,7 +10,15 @@
 </head>
 
 <body>
-<h1>Hello, {{.}}</h1>
+<h1>Hello, {{.Username}}.</h1>
+<h3>You have {{.Balance}}lv.</h3>
+<form method="GET" action="/index/earn">
+    <input type="submit" value="+" />
+</form>
+<form method="GET" action="/index/pay">
+    <input type="submit" value="-" />
+</form>
+
 <form method="GET" action="/index/users">
     <input type="submit" value="Show Users" />
 </form>

@@ -38,12 +38,24 @@ const (
 
 func (p *PaymentRepoMysql) CheckBalance(userID int) (int, error) {
 	var balance int
-	statement := "SELECT balance FROM users WHERE user_id= ?"
+	statement := "SELECT balance FROM wallet WHERE user_id= ?"
 	err := p.db.QueryRow(statement, userID).Scan(&balance)
 	if err != nil {
 		return 0, err
 	}
 	return balance, nil
+}
+
+func (p *PaymentRepoMysql) CreateWallet(userID int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	statement := "INSERT INTO wallet(user_id, balance) VALUES(?, ?)"
+	_, err := p.db.ExecContext(ctx, statement, userID, 0)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (p *PaymentRepoMysql) Pay(h *model.History) error {

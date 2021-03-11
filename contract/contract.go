@@ -31,7 +31,8 @@ type CategoryRepo interface {
 }
 
 type PaymentRepo interface {
-	CheckBalance(userID int) (int, error) // TODO in server
+	CheckBalance(userID int) (int, error)
+	CreateWallet(userID int) error
 
 	Pay(h *model.History) error
 	Earn(h *model.History) error
