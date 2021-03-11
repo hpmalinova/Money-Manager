@@ -66,7 +66,7 @@ func (u *UserRepoMysql) FindNamesByIDs(ids []int) ([]string, error) {
 		var username string
 		err := u.db.QueryRow(statement, id).Scan(&username)
 		if err != nil {
-			return nil, err
+			fmt.Println(err) //todo log fatal?
 		}
 		usernames = append(usernames, username)
 	}

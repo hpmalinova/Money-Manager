@@ -1,0 +1,51 @@
+{{define "friends"}}
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Users</title>
+    </head>
+    <body>
+    <div>
+        <h3>Pending requests: </h3>
+        {{if .PendingFriends.Usernames}}
+            <ol>
+                {{range .PendingFriends.Usernames}}
+                    <li>
+                        <div class="friend">
+                            <p class="username">{{.}}</p>
+                            <form method="POST" action="/index/friends/accept/{{.}}">
+                                <input type="submit" value="Accept" />
+                            </form>
+                            <form method="POST" action="/index/friends/decline/{{.}}">
+                                <input type="submit" value="Decline" />
+                            </form>
+                        </div>
+                    </li>
+                {{end}}
+            </ol>
+        {{else}}
+            <h4>You have no pending requests!</h4>
+        {{end}}
+
+        <h3>All friends: </h3>
+        {{if .Friends.Usernames}}
+            <ol>
+                {{range .Friends.Usernames}}
+                    <li>
+                        <div class="friend">
+                            <p class="username">{{.}}</p>
+                        </div>
+                    </li>
+                {{end}}
+            </ol>
+        {{else}}
+            <h4>You have no friends!</h4>
+        {{end}}
+    </div>
+    <form method="GET" action="/index">
+        <input type="submit" value="IndexPage" />
+    </form>
+    </body>
+    </html>
+{{end}}

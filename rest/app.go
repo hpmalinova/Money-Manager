@@ -68,10 +68,12 @@ const (
 	welcome  = "welcome"
 	register = "register"
 	login    = "login"
-	index    = "index"
-	logout   = "logout"
 
-	users = "users"
+	index  = "index"
+	logout = "logout"
+
+	users   = "users"
+	friends = "friends"
 )
 
 func (a *App) initializeRoutes() {
@@ -85,6 +87,12 @@ func (a *App) initializeRoutes() {
 	s.HandleFunc("", a.index).Methods(http.MethodGet)
 	s.HandleFunc("/"+logout, a.logout).Methods(http.MethodPost)
 	s.HandleFunc("/"+users, a.getUsers).Methods(http.MethodGet)
+	s.HandleFunc("/"+friends, a.getFriends).Methods(http.MethodGet, http.MethodPost)
+	s.HandleFunc("/"+friends+"/accept/{username}", a.acceptInvite).Methods(http.MethodPost)
+	s.HandleFunc("/"+friends+"/decline/{username}", a.declineInvite).Methods(http.MethodPost)
+
+	//s.HandleFunc("/"+users, a.getFriends).Methods(http.MethodGet)
+
 }
 
 func (a *App) welcome(w http.ResponseWriter, r *http.Request) {
@@ -202,25 +210,13 @@ func (a *App) logout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
-//func (a *App) getUsers(w http.ResponseWriter, r *http.Request) {
-//	users, err := a.Users.Find(0, 200)
-//	if err != nil {
-//		respondWithError(w, http.StatusInternalServerError, err.Error())
-//		return
-//	}
-//	// remove user passwords
-//	for i := range users {
-//		users[i].Password = ""
-//	}
-//	respondWithJSON(w, http.StatusOK, users)
-//}
 func (a *App) getUsers(w http.ResponseWriter, r *http.Request) {
 	// TODO
 	//count, err, start, done := a.getStartCount(w, r)
 	//if done {
 	//	return
 	//}
-	start,count := 0,10
+	start, count := 0, 10
 
 	users, err := a.Users.Find(start, count)
 	if err != nil {
@@ -232,7 +228,7 @@ func (a *App) getUsers(w http.ResponseWriter, r *http.Request) {
 		users[i].Password = ""
 	}
 
-	a.Template.ExecuteTemplate(w,"showUsers", model.Users{Users: users})
+	a.Template.ExecuteTemplate(w, "showUsers", model.Users{Users: users})
 
 	//respondWithJSON(w, http.StatusOK, users)
 }
@@ -264,4 +260,188 @@ func (a *App) getStartCount(w http.ResponseWriter, r *http.Request) (int, error,
 		start = minOffset
 	}
 	return count, err, start, false
+}
+
+func (a *App) getFriends(w http.ResponseWriter, r *http.Request) {
+	userID, _ := strconv.Atoi(r.Context().Value("user").(*model.UserToken).UserID)
+	// TODO
+	//count, err, start, done := a.getStartCount(w, r)
+	start, count := 0, 10
+
+	friends, err := a.getFriendsData(start, count, userID)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	pending, err := a.getPendingFriendsData(start, count, userID)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	a.Template.ExecuteTemplate(w, "friends", model.GetFriends{Friends: *friends, PendingFriends: *pending})
+}
+
+func (a *App) acceptInvite(w http.ResponseWriter, r *http.Request) {
+	userID, _ := strconv.Atoi(r.Context().Value("user").(*model.UserToken).UserID)
+
+	vars := mux.Vars(r)
+	friendUsername := vars["username"]
+
+	friend, _ := a.Users.FindByUsername(friendUsername)
+
+	// userOne is the user with the lowest ID
+	userOne, userTwo := userID, friend.ID
+	if userID > friend.ID {
+		userOne, userTwo = friend.ID, userID
+	}
+
+	if err := a.Friendship.AcceptInvite(userOne, userTwo, userID); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	http.Redirect(w, r, "/index/friends", http.StatusFound)
+}
+
+func (a *App) declineInvite(w http.ResponseWriter, r *http.Request) {
+	userID, _ := strconv.Atoi(r.Context().Value("user").(*model.UserToken).UserID)
+
+	vars := mux.Vars(r)
+	friendUsername := vars["username"]
+
+	friend, _ := a.Users.FindByUsername(friendUsername)
+
+	// userOne is the user with the lowest ID
+	userOne, userTwo := userID, friend.ID
+	if userID > friend.ID {
+		userOne, userTwo = friend.ID, userID
+	}
+
+	fmt.Println("IN DECLINE", userOne, userTwo)
+	if err := a.Friendship.DeclineInvite(userOne, userTwo); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	http.Redirect(w, r, "/index/friends", http.StatusFound)
+}
+
+//func (a *App) addFriend(w http.ResponseWriter, r *http.Request) {
+//	if r.URL.Path != "/"+friends {
+//		http.Error(w, "404 not found.", http.StatusNotFound)
+//		return
+//	}
+//
+//	switch r.Method {
+//	case "GET":
+//		_ = a.Template.ExecuteTemplate(w, friends, nil)
+//	case "POST":
+//		if err := r.ParseForm(); err != nil {
+//			_, _ = fmt.Fprintf(w, "ParseForm() err: %v", err)
+//			return
+//		}
+//
+//		username := r.FormValue("username")
+//		password := r.FormValue("password")
+//		user := &model.User{Username: username, Password: password}
+//
+//		// Validate User struct
+//		err := a.Validator.Struct(user)
+//		if err != nil {
+//			errs := err.(validator.ValidationErrors)
+//			respondWithValidationError(errs.Translate(a.Translator), w)
+//			return
+//		}
+//
+//		// Hash the password with bcrypt
+//		pass, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+//		if err != nil {
+//			fmt.Println(err)
+//			respondWithError(w, http.StatusInternalServerError, "Password Encryption  failed")
+//			return
+//		}
+//		user.Password = string(pass)
+//
+//		if user, err = a.Users.Create(user); err != nil {
+//			respondWithError(w, http.StatusInternalServerError, err.Error())
+//			return
+//		}
+//
+//		http.Redirect(w, r, "/", http.StatusFound)
+//	default:
+//		_, _ = fmt.Fprintf(w, "Sorry, only GET and POST methods are supported.")
+//	}
+//	//addFriendModel := &model.AddFriend{}
+//	//err := json.NewDecoder(r.Body).Decode(addFriendModel)
+//	//
+//	//if err != nil {
+//	//	fmt.Printf("Error adding friend %v: %v", addFriendModel.FriendName, err)
+//	//	respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+//	//	//var resp = map[string]interface{}{"status": false, "message": "Invalid request"}
+//	//	//_ = json.NewEncoder(w).Encode(resp)
+//	//	return
+//	//}
+//	//
+//	//// Create friendship model:
+//	//
+//	//user, err := a.Users.FindByUsername(addFriendModel.FriendName)
+//	//if err != nil {
+//	//	message := fmt.Sprintf("There is no user: %v", addFriendModel.FriendName)
+//	//	respondWithError(w, http.StatusBadRequest, message)
+//	//}
+//	//
+//	//userOne, userTwo := addFriendModel.ActionUserID, user.ID
+//	//
+//	//// userOne is the user with the lowest ID
+//	//if addFriendModel.ActionUserID > user.ID {
+//	//	userOne, userTwo = user.ID, addFriendModel.ActionUserID
+//	//}
+//	//
+//	//friendship := &model.Friendship{
+//	//	UserOne:    userOne,
+//	//	UserTwo:    userTwo,
+//	//	ActionUser: addFriendModel.ActionUserID,
+//	//}
+//	//
+//	//if err := a.Friendship.Add(friendship); err != nil {
+//	//	respondWithError(w, http.StatusInternalServerError, err.Error())
+//	//}
+//	//
+//	//w.WriteHeader(http.StatusCreated)
+//}
+
+// HELPER
+func (a *App) getFriendsData(start, count, userID int) (*model.Friends, error) {
+	friendIDs, err := a.Friendship.Find(start, count, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	friendNames, err := a.convertToUsername(friendIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.Friends{Usernames: friendNames}, nil
+}
+
+func (a *App) getPendingFriendsData(start, count, userID int) (*model.Friends, error) {
+	friendIDs, err := a.Friendship.FindPending(start, count, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	friendNames, err := a.convertToUsername(friendIDs)
+
+	return &model.Friends{Usernames: friendNames}, nil
+}
+
+func (a *App) convertToUsername(ids []int) ([]string, error) {
+	usernames, err := a.Users.FindNamesByIDs(ids)
+	if err != nil {
+		return nil, err
+	}
+	return usernames, nil
 }

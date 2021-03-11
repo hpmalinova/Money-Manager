@@ -173,90 +173,90 @@ func (a *App) getUser(w http.ResponseWriter, r *http.Request) {
 
 // Friendship //
 
-func (a *App) addFriend(w http.ResponseWriter, r *http.Request) {
-	addFriendModel := &model.AddFriend{}
-	err := json.NewDecoder(r.Body).Decode(addFriendModel)
+//func (a *App) addFriend(w http.ResponseWriter, r *http.Request) {
+//	addFriendModel := &model.AddFriend{}
+//	err := json.NewDecoder(r.Body).Decode(addFriendModel)
+//
+//	if err != nil {
+//		fmt.Printf("Error adding friend %v: %v", addFriendModel.FriendName, err)
+//		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+//		//var resp = map[string]interface{}{"status": false, "message": "Invalid request"}
+//		//_ = json.NewEncoder(w).Encode(resp)
+//		return
+//	}
+//
+//	// Create friendship model:
+//
+//	user, err := a.Users.FindByUsername(addFriendModel.FriendName)
+//	if err != nil {
+//		message := fmt.Sprintf("There is no user: %v", addFriendModel.FriendName)
+//		respondWithError(w, http.StatusBadRequest, message)
+//	}
+//
+//	userOne, userTwo := addFriendModel.ActionUserID, user.ID
+//
+//	// userOne is the user with the lowest ID
+//	if addFriendModel.ActionUserID > user.ID {
+//		userOne, userTwo = user.ID, addFriendModel.ActionUserID
+//	}
+//
+//	friendship := &model.Friendship{
+//		UserOne:    userOne,
+//		UserTwo:    userTwo,
+//		ActionUser: addFriendModel.ActionUserID,
+//	}
+//
+//	if err := a.Friendship.Add(friendship); err != nil {
+//		respondWithError(w, http.StatusInternalServerError, err.Error())
+//	}
+//
+//	w.WriteHeader(http.StatusCreated)
+//}
 
-	if err != nil {
-		fmt.Printf("Error adding friend %v: %v", addFriendModel.FriendName, err)
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
-		//var resp = map[string]interface{}{"status": false, "message": "Invalid request"}
-		//_ = json.NewEncoder(w).Encode(resp)
-		return
-	}
-
-	// Create friendship model:
-
-	user, err := a.Users.FindByUsername(addFriendModel.FriendName)
-	if err != nil {
-		message := fmt.Sprintf("There is no user: %v", addFriendModel.FriendName)
-		respondWithError(w, http.StatusBadRequest, message)
-	}
-
-	userOne, userTwo := addFriendModel.ActionUserID, user.ID
-
-	// userOne is the user with the lowest ID
-	if addFriendModel.ActionUserID > user.ID {
-		userOne, userTwo = user.ID, addFriendModel.ActionUserID
-	}
-
-	friendship := &model.Friendship{
-		UserOne:    userOne,
-		UserTwo:    userTwo,
-		ActionUser: addFriendModel.ActionUserID,
-	}
-
-	if err := a.Friendship.Add(friendship); err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
-	}
-
-	w.WriteHeader(http.StatusCreated)
-}
-
-func (a *App) getFriends(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	userID, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
-		return
-	}
-
-	count, err := strconv.Atoi(r.FormValue("count"))
-	if err != nil && r.FormValue("count") != "" {
-		respondWithError(w, http.StatusBadRequest, "Invalid request count parameter")
-		return
-	}
-	start, err := strconv.Atoi(r.FormValue("start"))
-	if err != nil && r.FormValue("start") != "" {
-		respondWithError(w, http.StatusBadRequest, "Invalid request start parameter")
-		return
-	}
-
-	const (
-		minOffset = 0
-		minLimit  = 1
-		maxLimit  = 10
-	)
-
-	start--
-	if count > maxLimit || count < minLimit {
-		count = maxLimit
-	}
-	if start < minOffset {
-		start = minOffset
-	}
-
-	// TODO
-	friendIDs, err := a.Friendship.Find(start, count, userID)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	// TODO convert to usernames
-	//a.Users.
-	respondWithJSON(w, http.StatusOK, friendIDs)
-}
+//func (a *App) getFriends(w http.ResponseWriter, r *http.Request) {
+//	vars := mux.Vars(r)
+//	userID, err := strconv.Atoi(vars["id"])
+//	if err != nil {
+//		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+//		return
+//	}
+//
+//	count, err := strconv.Atoi(r.FormValue("count"))
+//	if err != nil && r.FormValue("count") != "" {
+//		respondWithError(w, http.StatusBadRequest, "Invalid request count parameter")
+//		return
+//	}
+//	start, err := strconv.Atoi(r.FormValue("start"))
+//	if err != nil && r.FormValue("start") != "" {
+//		respondWithError(w, http.StatusBadRequest, "Invalid request start parameter")
+//		return
+//	}
+//
+//	const (
+//		minOffset = 0
+//		minLimit  = 1
+//		maxLimit  = 10
+//	)
+//
+//	start--
+//	if count > maxLimit || count < minLimit {
+//		count = maxLimit
+//	}
+//	if start < minOffset {
+//		start = minOffset
+//	}
+//
+//	// TODO
+//	friendIDs, err := a.Friendship.Find(start, count, userID)
+//	if err != nil {
+//		respondWithError(w, http.StatusInternalServerError, err.Error())
+//		return
+//	}
+//
+//	// TODO convert to usernames
+//	//a.Users.
+//	respondWithJSON(w, http.StatusOK, friendIDs)
+//}
 
 func (a *App) getPending(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -305,57 +305,57 @@ func (a *App) getPending(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, friendIDs)
 }
 
-func (a *App) acceptInvite(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	userID, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
-		return
-	}
-	friendID, err := strconv.Atoi(vars["friend-id"])
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid friend ID")
-		return
-	}
-
-	userOne, userTwo := userID, friendID
-
-	// userOne is the user with the lowest ID
-	if userID > friendID {
-		userOne, userTwo = friendID, userID
-	}
-
-	if err := a.Friendship.AcceptInvite(userOne, userTwo, userID); err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-}
-
-func (a *App) declineInvite(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	userID, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
-		return
-	}
-	friendID, err := strconv.Atoi(vars["friend-id"])
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid friend ID")
-		return
-	}
-
-	userOne, userTwo := userID, friendID
-
-	// userOne is the user with the lowest ID
-	if userID > friendID {
-		userOne, userTwo = friendID, userID
-	}
-
-	if err := a.Friendship.DeclineInvite(userOne, userTwo, userID); err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-}
+//func (a *App) acceptInvite(w http.ResponseWriter, r *http.Request) {
+//	vars := mux.Vars(r)
+//	userID, err := strconv.Atoi(vars["id"])
+//	if err != nil {
+//		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+//		return
+//	}
+//	friendID, err := strconv.Atoi(vars["friend-id"])
+//	if err != nil {
+//		respondWithError(w, http.StatusBadRequest, "Invalid friend ID")
+//		return
+//	}
+//
+//	userOne, userTwo := userID, friendID
+//
+//	// userOne is the user with the lowest ID
+//	if userID > friendID {
+//		userOne, userTwo = friendID, userID
+//	}
+//
+//	if err := a.Friendship.AcceptInvite(userOne, userTwo, userID); err != nil {
+//		respondWithError(w, http.StatusInternalServerError, err.Error())
+//		return
+//	}
+//}
+//
+//func (a *App) declineInvite(w http.ResponseWriter, r *http.Request) {
+//	vars := mux.Vars(r)
+//	userID, err := strconv.Atoi(vars["id"])
+//	if err != nil {
+//		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+//		return
+//	}
+//	friendID, err := strconv.Atoi(vars["friend-id"])
+//	if err != nil {
+//		respondWithError(w, http.StatusBadRequest, "Invalid friend ID")
+//		return
+//	}
+//
+//	userOne, userTwo := userID, friendID
+//
+//	// userOne is the user with the lowest ID
+//	if userID > friendID {
+//		userOne, userTwo = friendID, userID
+//	}
+//
+//	if err := a.Friendship.DeclineInvite(userOne, userTwo, userID); err != nil {
+//		respondWithError(w, http.StatusInternalServerError, err.Error())
+//		return
+//	}
+//}
 
 // Groups //
 

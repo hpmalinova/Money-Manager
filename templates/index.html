@@ -11,11 +11,14 @@
 
 <body>
 <h1>Hello, {{.}}</h1>
-<form method="POST" action="/index/logout">
-    <input type="submit" value="Logout" />
-</form>
 <form method="GET" action="/index/users">
     <input type="submit" value="Show Users" />
+</form>
+<form method="GET" action="/index/friends">
+    <input type="submit" value="Show Friends" />
+</form>
+<form method="POST" action="/index/logout">
+    <input type="submit" value="Logout" />
 </form>
 </body>
 

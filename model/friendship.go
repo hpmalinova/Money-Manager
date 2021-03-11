@@ -11,3 +11,12 @@ type AddFriend struct {
 	FriendName   string `json:"friendName"`
 	ActionUserID int    `json:"actionUserID"`
 }
+
+type Friends struct {
+	Usernames []string
+}
+
+type GetFriends struct {
+	Friends        Friends
+	PendingFriends Friends
+}
