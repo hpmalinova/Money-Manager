@@ -25,14 +25,13 @@
         </div>
         <div class="loan">
             <form method="POST" action="/index/loan">
-{{/*                <label>Loan to: </label><input name="to" type="text" value="" min="1" max="{{.Balance}}" placeholder="Friend`s Username" required/>*/}}
-                <label>Amount: </label><input name="amount" type="number" value="" min="1" max="{{.Balance}}" required/>
-                <label>Category: </label>
-                <select name="category" id="category">
-                    {{range .Categories}}
-                        <option value={{.Name}}>{{.Name}}</option>
+                <label>Friend`s name: </label>
+                <select name="to" id="to">
+                    {{range .Friends}}
+                        <option value={{.}}>{{.}}</option>
                     {{end}}
                 </select>
+                <label>Amount: </label><input name="amount" type="number" value="" min="1" max="{{.Balance}}" required/>
                 <label>Description: </label><input name="description" type="text" value=""/>
                 <input type="submit" value="Pay" />
             </form>

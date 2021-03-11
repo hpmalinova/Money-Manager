@@ -1,4 +1,0 @@
-# github.com/hpmalinova/Money-Manager/rest
-rest\app.go:471:17: cannot assign *model.Category to category (type string) in multiple assignment
-rest\app.go:471:44: undefined: payModel
-rest\app.go:473:58: undefined: payModel
