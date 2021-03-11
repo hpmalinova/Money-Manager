@@ -77,8 +77,10 @@ func (u *UserRepoMysql) FindNamesByIDs(ids []int) ([]string, error) {
 func (u *UserRepoMysql) FindByUsername(username string) (*model.User, error) {
 	user := &model.User{}
 	statement := "SELECT id, username, password FROM users WHERE username= ?"
-	err := u.db.QueryRow(statement, username).Scan(&user.ID, &user.Username, &user.Password)
-	if err != nil {
+	row := u.db.QueryRow(statement, username)
+	err := row.Scan(&user.ID, &user.Username, &user.Password)
+	if err != nil || err == sql.ErrNoRows {
+		fmt.Println("IN ERROR")
 		return nil, err
 	}
 	return user, nil

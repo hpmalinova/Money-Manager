@@ -90,6 +90,7 @@ func (a *App) initializeRoutes() {
 	s.HandleFunc("/"+friends, a.getFriends).Methods(http.MethodGet, http.MethodPost)
 	s.HandleFunc("/"+friends+"/accept/{username}", a.acceptInvite).Methods(http.MethodPost)
 	s.HandleFunc("/"+friends+"/decline/{username}", a.declineInvite).Methods(http.MethodPost)
+	s.HandleFunc("/"+friends+"/add", a.addFriend).Methods(http.MethodPost)
 
 	//s.HandleFunc("/"+users, a.getFriends).Methods(http.MethodGet)
 
@@ -328,89 +329,48 @@ func (a *App) declineInvite(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/index/friends", http.StatusFound)
 }
 
-//func (a *App) addFriend(w http.ResponseWriter, r *http.Request) {
-//	if r.URL.Path != "/"+friends {
-//		http.Error(w, "404 not found.", http.StatusNotFound)
-//		return
-//	}
-//
-//	switch r.Method {
-//	case "GET":
-//		_ = a.Template.ExecuteTemplate(w, friends, nil)
-//	case "POST":
-//		if err := r.ParseForm(); err != nil {
-//			_, _ = fmt.Fprintf(w, "ParseForm() err: %v", err)
-//			return
-//		}
-//
-//		username := r.FormValue("username")
-//		password := r.FormValue("password")
-//		user := &model.User{Username: username, Password: password}
-//
-//		// Validate User struct
-//		err := a.Validator.Struct(user)
-//		if err != nil {
-//			errs := err.(validator.ValidationErrors)
-//			respondWithValidationError(errs.Translate(a.Translator), w)
-//			return
-//		}
-//
-//		// Hash the password with bcrypt
-//		pass, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
-//		if err != nil {
-//			fmt.Println(err)
-//			respondWithError(w, http.StatusInternalServerError, "Password Encryption  failed")
-//			return
-//		}
-//		user.Password = string(pass)
-//
-//		if user, err = a.Users.Create(user); err != nil {
-//			respondWithError(w, http.StatusInternalServerError, err.Error())
-//			return
-//		}
-//
-//		http.Redirect(w, r, "/", http.StatusFound)
-//	default:
-//		_, _ = fmt.Fprintf(w, "Sorry, only GET and POST methods are supported.")
-//	}
-//	//addFriendModel := &model.AddFriend{}
-//	//err := json.NewDecoder(r.Body).Decode(addFriendModel)
-//	//
-//	//if err != nil {
-//	//	fmt.Printf("Error adding friend %v: %v", addFriendModel.FriendName, err)
-//	//	respondWithError(w, http.StatusBadRequest, "Invalid request payload")
-//	//	//var resp = map[string]interface{}{"status": false, "message": "Invalid request"}
-//	//	//_ = json.NewEncoder(w).Encode(resp)
-//	//	return
-//	//}
-//	//
-//	//// Create friendship model:
-//	//
-//	//user, err := a.Users.FindByUsername(addFriendModel.FriendName)
-//	//if err != nil {
-//	//	message := fmt.Sprintf("There is no user: %v", addFriendModel.FriendName)
-//	//	respondWithError(w, http.StatusBadRequest, message)
-//	//}
-//	//
-//	//userOne, userTwo := addFriendModel.ActionUserID, user.ID
-//	//
-//	//// userOne is the user with the lowest ID
-//	//if addFriendModel.ActionUserID > user.ID {
-//	//	userOne, userTwo = user.ID, addFriendModel.ActionUserID
-//	//}
-//	//
-//	//friendship := &model.Friendship{
-//	//	UserOne:    userOne,
-//	//	UserTwo:    userTwo,
-//	//	ActionUser: addFriendModel.ActionUserID,
-//	//}
-//	//
-//	//if err := a.Friendship.Add(friendship); err != nil {
-//	//	respondWithError(w, http.StatusInternalServerError, err.Error())
-//	//}
-//	//
-//	//w.WriteHeader(http.StatusCreated)
-//}
+func (a *App) addFriend(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/"+index+"/"+friends+"/add" {
+		fmt.Println(r.URL.Path)
+		http.Error(w, "404 not found.", http.StatusNotFound)
+		return
+	}
+
+	userID, _ := strconv.Atoi(r.Context().Value("user").(*model.UserToken).UserID)
+
+	if err := r.ParseForm(); err != nil {
+		_, _ = fmt.Fprintf(w, "ParseForm() err: %v", err)
+		return
+	}
+	friendName := r.FormValue("username")
+
+	// Check if username exists
+	friend, err := a.Users.FindByUsername(friendName)
+	if err != nil {
+		message := fmt.Sprintf("There is no user: %v", friendName)
+		respondWithError(w, http.StatusBadRequest, message)
+		return
+	}
+
+	// userOne is the user with the lowest ID
+	userOne, userTwo := userID, friend.ID
+	if userID > friend.ID {
+		userOne, userTwo = friend.ID, userID
+	}
+
+	friendship := &model.Friendship{
+		UserOne:    userOne,
+		UserTwo:    userTwo,
+		ActionUser: userID,
+	}
+
+	if err := a.Friendship.Add(friendship); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	http.Redirect(w, r, "/index/friends", http.StatusFound)
+}
 
 // HELPER
 func (a *App) getFriendsData(start, count, userID int) (*model.Friends, error) {

@@ -28,6 +28,12 @@
             <h4>You have no pending requests!</h4>
         {{end}}
 
+        <h3>Add friend:</h3>
+        <form method="POST" action="/index/friends/add">
+            <input name="username" type="text" value="" placeholder="Friend`s name:" />
+            <input type="submit" value="Add Friend" />
+        </form>
+
         <h3>All friends: </h3>
         {{if .Friends.Usernames}}
             <ol>
