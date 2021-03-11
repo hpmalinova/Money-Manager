@@ -1,0 +1,33 @@
+{{define "earn"}}
+    <!DOCTYPE html>
+    <html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Earn</title>
+    </head>
+
+    <body>
+    <h3>You have {{.Balance}}lv.</h3>
+    <div class="earn">
+        <form method="POST" action="/index/earn">
+            <label>Amount: </label><input name="amount" type="number" value="" min="1" required/>
+            <label>Category: </label>
+            <select name="category" id="category">
+                {{range .Categories}}
+                    <option value={{.Name}}>{{.Name}}</option>
+                {{end}}
+            </select>
+            <label>Description: </label><input name="description" type="text" value=""/>
+            <input type="submit" value="Earn " />
+        </form>
+    </div>
+
+    <form method="GET" action="/index">
+        <input type="submit" value="Back" />
+    </form>
+    </body>
+
+    </html>
+{{end}}

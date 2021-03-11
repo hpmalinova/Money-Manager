@@ -502,38 +502,38 @@ func (a *App) getCategoryByStatus(statusID int) string {
 //	}
 //}
 
-// I earn 1000lv from SALARY "Job"
-// Receive --> user_id, amount, categoryName, description
-func (a *App) earn(w http.ResponseWriter, r *http.Request) {
-	// todo userID and remove from Pay model
-	payModel := &model.Pay{}
-	err := json.NewDecoder(r.Body).Decode(payModel)
-
-	if err != nil {
-		fmt.Printf("Error paying : %v", err)
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
-		return
-	}
-
-	// Find CategoryID
-	category, err := a.Categories.FindByName(payModel.CategoryName)
-	if err != nil {
-		message := fmt.Sprintf("There is no category %s: %v", payModel.CategoryName, err.Error())
-		respondWithError(w, http.StatusBadRequest, message)
-	}
-
-	h := &model.History{
-		UserID:      payModel.UserID,
-		Amount:      payModel.Amount,
-		CategoryID:  category.ID,
-		Description: payModel.Description,
-	}
-
-	err = a.Payment.Earn(h)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, err.Error())
-	}
-}
+//// I earn 1000lv from SALARY "Job"
+//// Receive --> user_id, amount, categoryName, description
+//func (a *App) earn(w http.ResponseWriter, r *http.Request) {
+//	// todo userID and remove from Pay model
+//	payModel := &model.Pay{}
+//	err := json.NewDecoder(r.Body).Decode(payModel)
+//
+//	if err != nil {
+//		fmt.Printf("Error paying : %v", err)
+//		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+//		return
+//	}
+//
+//	// Find CategoryID
+//	category, err := a.Categories.FindByName(payModel.CategoryName)
+//	if err != nil {
+//		message := fmt.Sprintf("There is no category %s: %v", payModel.CategoryName, err.Error())
+//		respondWithError(w, http.StatusBadRequest, message)
+//	}
+//
+//	h := &model.History{
+//		UserID:      payModel.UserID,
+//		Amount:      payModel.Amount,
+//		CategoryID:  category.ID,
+//		Description: payModel.Description,
+//	}
+//
+//	err = a.Payment.Earn(h)
+//	if err != nil {
+//		respondWithError(w, http.StatusBadRequest, err.Error())
+//	}
+//}
 
 //// I giveMoneyTo George for "Bills"
 //// Receive --> <CreditorID> // DebtorID, Amount, Description

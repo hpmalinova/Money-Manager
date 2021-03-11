@@ -78,7 +78,7 @@ const (
 	earn     = "earn"
 	pay      = "pay"
 	giveLoan = "loan"
-	split = "split"
+	split    = "split"
 )
 
 func (a *App) initializeRoutes() {
@@ -97,7 +97,7 @@ func (a *App) initializeRoutes() {
 	s.HandleFunc("/"+friends+"/decline/{username}", a.declineInvite).Methods(http.MethodPost)
 	s.HandleFunc("/"+friends+"/add", a.addFriend).Methods(http.MethodPost)
 
-	//s.HandleFunc("/"+earn, a.addFriend).Methods(http.MethodPost, http.MethodPost)
+	s.HandleFunc("/"+earn, a.earn).Methods(http.MethodGet, http.MethodPost)
 	s.HandleFunc("/"+pay, a.pay).Methods(http.MethodGet, http.MethodPost)
 	s.HandleFunc("/"+giveLoan, a.giveLoan).Methods(http.MethodPost)
 	s.HandleFunc("/"+split, a.split).Methods(http.MethodPost)
@@ -571,4 +571,63 @@ func (a *App) split(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/index/pay", http.StatusFound)
+}
+
+// I earn 1000lv from SALARY "Job"
+// Receive --> user_id, amount, categoryName, description
+func (a *App) earn(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/index/"+earn {
+		fmt.Println(r.URL.Path)
+		http.Error(w, "404 not found.", http.StatusNotFound)
+		return
+	}
+
+	switch r.Method {
+	case "GET":
+		user := r.Context().Value("user").(*model.UserToken)
+		userID, _ := strconv.Atoi(user.UserID)
+		// Show balance
+		balance, _ := a.Payment.CheckBalance(userID)
+
+		// Show Income Categories
+		categories, _ := a.Categories.FindIncomes()
+
+		// Show Friends
+		friendIDs, _ := a.Friendship.Find(0, 100, userID) // TODO fix range
+		friendUsernames, _ := a.convertToUsername(friendIDs)
+
+		_ = a.Template.ExecuteTemplate(w, earn, PayTemplate{
+			Balance:    balance,
+			Categories: categories,
+			Friends:    friendUsernames,
+		})
+	case "POST":
+		userID, _ := strconv.Atoi(r.Context().Value("user").(*model.UserToken).UserID)
+
+		if err := r.ParseForm(); err != nil {
+			_, _ = fmt.Fprintf(w, "ParseForm() err: %v", err)
+			return
+		}
+		amountS := r.FormValue("amount")
+		amount, _ := strconv.Atoi(amountS)
+		categoryName := r.FormValue("category")
+		category, _ := a.Categories.FindByName(categoryName)
+		description := r.FormValue("description")
+
+		h := &model.History{
+			UserID:      userID,
+			Amount:      amount,
+			CategoryID:  category.ID,
+			Description: description,
+		}
+
+		err := a.Payment.Earn(h)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, err.Error())
+		}
+		http.Redirect(w, r, "/index/earn", http.StatusFound)
+	default:
+		_, _ = fmt.Fprintf(w, "Sorry, only GET and POST methods are supported.")
+	}
+
 }
