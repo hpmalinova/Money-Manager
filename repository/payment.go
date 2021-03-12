@@ -474,7 +474,7 @@ func (p *PaymentRepoMysql) AcceptPayment(a *model.Accept) error {
 					FROM debts AS d
 					INNER JOIN debt_status AS s
 						ON d.status_id = s.id
-					WHERE s.status=?`
+					WHERE s.id=?`
 	err = tx.QueryRowContext(ctx, statement, a.StatusID).Scan(&ap.CreditorID, &ap.DebtorID, &ap.DebtAmount,
 		&ap.Description, &ap.PendingAmount)
 	if err != nil {
@@ -502,6 +502,12 @@ func (p *PaymentRepoMysql) AcceptPayment(a *model.Accept) error {
 		// Decrease the debt
 		statement = "UPDATE debt_status SET status = ?, amount = ? WHERE id = ?"
 		_, err = tx.ExecContext(ctx, statement, ongoingStatus, ap.DebtAmount-ap.PendingAmount, a.StatusID)
+		if err != nil {
+			return err
+		}
+
+		statement = "UPDATE debts SET amount = ? WHERE status_id = ?"
+		_, err = tx.ExecContext(ctx, statement, ap.DebtAmount-ap.PendingAmount, a.StatusID)
 		if err != nil {
 			return err
 		}
