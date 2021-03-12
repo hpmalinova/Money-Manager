@@ -36,8 +36,8 @@ type PaymentRepo interface {
 
 	Pay(h *model.History) error
 	Earn(h *model.History) error
-	GiveLoan(t *model.Transfer) error
-	Split(t *model.Transfer) error
+	GiveLoan(t *model.TransferLoan) error
+	Split(t *model.TransferSplit) error
 
 	FindActiveDebts(debtorID int) ([]model.DebtExt, error)
 	FindActiveLoans(creditorID int) ([]model.Loan, error)

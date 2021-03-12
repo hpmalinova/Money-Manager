@@ -33,6 +33,7 @@ func (c *CategoryRepoMysql) FindByName(categoryName string) (*model.Category, er
 	statement := `SELECT id, c_type, name FROM categories WHERE name = ?`
 	err := c.db.QueryRow(statement, categoryName).Scan(&category.ID, &category.CType, &category.Name)
 	if err != nil {
+		fmt.Println("IN REPO", categoryName, category)
 		return nil, err
 	}
 	return category, nil

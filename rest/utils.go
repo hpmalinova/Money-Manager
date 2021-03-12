@@ -225,6 +225,7 @@ func (a *App) getCategories(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) getCategoryByName(categoryName string) *model.Category {
+	fmt.Println("IN getCategoryByName", categoryName)
 	c, err := a.Categories.FindByName(categoryName)
 	if err != nil {
 		fmt.Println(err.Error())

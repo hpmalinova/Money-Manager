@@ -455,15 +455,20 @@ func (a *App) giveLoan(w http.ResponseWriter, r *http.Request) {
 	var debt = "debt"
 	debtC, _ := a.Categories.FindByName(debt)
 
-	t := &model.Transfer{
-		CreditorID: userID,
-		LoanID:     loanC.ID,
-		DebtID:     debtC.ID,
-		DebtName:   debtC.Name,
-		Loan: model.Loan{
-			DebtorID:    friend.ID,
-			Amount:      amount,
-			Description: description,
+	var repay = "repay"
+	repayC, _ := a.Categories.FindByName(repay)
+
+	t := &model.TransferLoan{
+		DebtCategoryID:    debtC.ID,
+		RepayCategoryName: repayC.Name,
+		Transfer:          model.Transfer{
+			CreditorID:     userID,
+			LoanCategoryID: loanC.ID,
+			Loan:           model.Loan{
+				DebtorID:    friend.ID,
+				Amount:      amount,
+				Description: description,
+			},
 		},
 	}
 
@@ -494,17 +499,19 @@ func (a *App) split(w http.ResponseWriter, r *http.Request) {
 
 	var loan = "loan"
 	loanC, _ := a.Categories.FindByName(loan)
-	debtC, _ := a.Categories.FindByName(categoryName)
 
-	t := &model.Transfer{
-		CreditorID: userID,
-		LoanID:     loanC.ID,
-		DebtID:     debtC.ID,
-		DebtName:   debtC.Name,
-		Loan: model.Loan{
-			DebtorID:    friend.ID,
-			Amount:      amount,
-			Description: description,
+	expenseC, _ := a.Categories.FindByName(categoryName)
+
+	t := &model.TransferSplit{
+		Expense:  *expenseC,
+		Transfer: model.Transfer{
+			CreditorID:     userID,
+			LoanCategoryID: loanC.ID,
+			Loan:           model.Loan{
+				DebtorID:    friend.ID,
+				Amount:      amount,
+				Description: description,
+			},
 		},
 	}
 
@@ -730,8 +737,8 @@ func (a *App) acceptPayment(w http.ResponseWriter, r *http.Request) {
 
 	expenseC := a.getCategoryByName(a.getCategoryByStatus(statusID))
 	repayC := a.getCategoryByName("receive")
-
 	am := &model.Accept{StatusID: statusID, RepayC: *repayC, ExpenseC: *expenseC}
+	fmt.Println("EXPENSEC AFTER", expenseC, repayC, statusID)
 
 	if err := a.Payment.AcceptPayment(am); err != nil {
 		msg := fmt.Sprintf("Error accepting payment: %v", err.Error())

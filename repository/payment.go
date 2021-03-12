@@ -138,7 +138,7 @@ func (p *PaymentRepoMysql) Earn(h *model.History) error {
 	return nil
 }
 
-func (p *PaymentRepoMysql) GiveLoan(t *model.Transfer) error {
+func (p *PaymentRepoMysql) GiveLoan(t *model.TransferLoan) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
@@ -175,14 +175,14 @@ func (p *PaymentRepoMysql) GiveLoan(t *model.Transfer) error {
 
 	// Add to expenses (Creditor)
 	statement = "INSERT INTO money_history(uid, amount, category_id, description) VALUES(?, ?, ?, ?)"
-	_, err = tx.ExecContext(ctx, statement, t.CreditorID, t.Amount, t.LoanID, t.Description)
+	_, err = tx.ExecContext(ctx, statement, t.CreditorID, t.Amount, t.LoanCategoryID, t.Description)
 	if err != nil {
 		return err
 	}
 
 	// Add to incomes (Debtor)
 	statement = "INSERT INTO money_history(uid, amount, category_id, description) VALUES(?, ?, ?, ?)"
-	_, err = tx.ExecContext(ctx, statement, t.DebtorID, t.Amount, t.DebtID, t.Description)
+	_, err = tx.ExecContext(ctx, statement, t.DebtorID, t.Amount, t.DebtCategoryID, t.Description)
 	if err != nil {
 		return err
 	}
@@ -201,7 +201,7 @@ func (p *PaymentRepoMysql) GiveLoan(t *model.Transfer) error {
 	statusID := int(id)
 
 	statement = "INSERT INTO debts(creditor, debtor, amount, category, description, status_id) VALUES(?, ?, ?, ?, ?, ?)"
-	result, err = tx.ExecContext(ctx, statement, t.CreditorID, t.DebtorID, t.Amount, t.DebtName, t.Description, statusID)
+	result, err = tx.ExecContext(ctx, statement, t.CreditorID, t.DebtorID, t.Amount, t.RepayCategoryName, t.Description, statusID)
 	if err != nil {
 		return err
 	}
@@ -219,7 +219,7 @@ func (p *PaymentRepoMysql) GiveLoan(t *model.Transfer) error {
 	return nil
 }
 
-func (p *PaymentRepoMysql) Split(t *model.Transfer) error {
+func (p *PaymentRepoMysql) Split(t *model.TransferSplit) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
@@ -250,14 +250,14 @@ func (p *PaymentRepoMysql) Split(t *model.Transfer) error {
 
 	// Add to expenses (Creditor: Pay)
 	statement = "INSERT INTO money_history(uid, amount, category_id, description) VALUES(?, ?, ?, ?)"
-	_, err = tx.ExecContext(ctx, statement, t.CreditorID, halfAmount, t.DebtID, t.Description)
+	_, err = tx.ExecContext(ctx, statement, t.CreditorID, halfAmount, t.Expense.ID, t.Description)
 	if err != nil {
 		return err
 	}
 
 	// Add to expenses (Creditor: Loan)
 	statement = "INSERT INTO money_history(uid, amount, category_id, description) VALUES(?, ?, ?, ?)"
-	_, err = tx.ExecContext(ctx, statement, t.CreditorID, halfAmount, t.LoanID, t.Description)
+	_, err = tx.ExecContext(ctx, statement, t.CreditorID, halfAmount, t.LoanCategoryID, t.Description)
 	if err != nil {
 		return err
 	}
@@ -276,7 +276,7 @@ func (p *PaymentRepoMysql) Split(t *model.Transfer) error {
 	statusID := int(id)
 
 	statement = "INSERT INTO debts(creditor, debtor, amount, category, description, status_id) VALUES(?, ?, ?, ?, ?, ?)"
-	result, err = tx.ExecContext(ctx, statement, t.CreditorID, t.DebtorID, halfAmount, t.DebtName, t.Description, statusID)
+	result, err = tx.ExecContext(ctx, statement, t.CreditorID, t.DebtorID, halfAmount, t.Expense.Name, t.Description, statusID)
 	if err != nil {
 		return err
 	}
@@ -470,13 +470,13 @@ func (p *PaymentRepoMysql) AcceptPayment(a *model.Accept) error {
 	defer tx.Rollback()
 
 	ap := model.AcceptPayment{}
-	statement := `SELECT d.creditor, d.debtor, d.amount, d.description, s.status, s.amount
+	statement := `SELECT d.creditor, d.debtor, d.amount, d.description, s.amount
 					FROM debts AS d
 					INNER JOIN debt_status AS s
 						ON d.status_id = s.id
 					WHERE s.status=?`
 	err = tx.QueryRowContext(ctx, statement, a.StatusID).Scan(&ap.CreditorID, &ap.DebtorID, &ap.DebtAmount,
-		&ap.Description, &ap.Status, &ap.PendingAmount)
+		&ap.Description, &ap.PendingAmount)
 	if err != nil {
 		return err
 	}

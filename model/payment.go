@@ -7,11 +7,33 @@ type Pay struct {
 	Description  string `json:"description,omitempty"`
 }
 
+//type Transfer struct {
+//	CreditorID int    `json:"debtorID" validate:"numeric,gte=0"`
+//	LoanID     int    `json:"loanID" validate:"numeric,gte=0"`
+//	DebtID     int    `json:"debtID" validate:"numeric,gte=0"`
+//	DebtName   string `json:"debtName" validate:"required,min=3,max=32"`
+//	Loan
+//}
+//
+//type TransferLoan struct {
+//	RepayID int `json:"repayID" validate:"numeric,gte=0"`
+//	Transfer
+//}
+
+type TransferLoan struct {
+	DebtCategoryID    int    `json:"debtCategoryID" validate:"numeric,gte=0"`
+	RepayCategoryName string `json:"repayCategoryName" validate:"required,min=3,max=32"`
+	Transfer
+}
+
+type TransferSplit struct {
+	Expense Category
+	Transfer
+}
+
 type Transfer struct {
-	CreditorID int    `json:"debtorID" validate:"numeric,gte=0"`
-	LoanID     int    `json:"loanID" validate:"numeric,gte=0"`
-	DebtID     int    `json:"debtID" validate:"numeric,gte=0"`
-	DebtName   string `json:"debtName" validate:"required,min=3,max=32"`
+	CreditorID     int `json:"debtorID" validate:"numeric,gte=0"`
+	LoanCategoryID int `json:"loanCategoryID" validate:"numeric,gte=0"`
 	Loan
 }
 
