@@ -201,7 +201,7 @@ func (p *PaymentRepoMysql) GiveLoan(t *model.Transfer) error {
 	statusID := int(id)
 
 	statement = "INSERT INTO debts(creditor, debtor, amount, category, description, status_id) VALUES(?, ?, ?, ?, ?, ?)"
-	result, err = tx.ExecContext(ctx, statement, t.CreditorID, t.DebtorID, t.Amount, t.DebtID, t.Description, statusID)
+	result, err = tx.ExecContext(ctx, statement, t.CreditorID, t.DebtorID, t.Amount, t.DebtName, t.Description, statusID)
 	if err != nil {
 		return err
 	}
@@ -276,7 +276,7 @@ func (p *PaymentRepoMysql) Split(t *model.Transfer) error {
 	statusID := int(id)
 
 	statement = "INSERT INTO debts(creditor, debtor, amount, category, description, status_id) VALUES(?, ?, ?, ?, ?, ?)"
-	result, err = tx.ExecContext(ctx, statement, t.CreditorID, t.DebtorID, halfAmount, t.DebtID, t.Description, statusID)
+	result, err = tx.ExecContext(ctx, statement, t.CreditorID, t.DebtorID, halfAmount, t.DebtName, t.Description, statusID)
 	if err != nil {
 		return err
 	}
