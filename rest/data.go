@@ -102,15 +102,17 @@ func (a *App) addPayments() {
 // Lily: 40
 // Hrisi --> Lily (30lv "Bills")
 func (a *App) addLoans() {
-	_ = a.Payment.GiveLoan(&model.Transfer{
-		CreditorID: 1,
-		LoanID:     1,
-		DebtID:     6,
-		DebtName:   "debt",
-		Loan: model.Loan{
-			DebtorID:    4,
-			Amount:      30,
-			Description: "Bills",
+	_ = a.Payment.GiveLoan(&model.TransferLoan{
+		DebtCategoryID:    6,
+		RepayCategoryName: "repay",
+		Transfer:          model.Transfer{
+			CreditorID:     1,
+			LoanCategoryID: 1,
+			Loan:           model.Loan{
+				DebtorID:    4,
+				Amount:      30,
+				Description: "Bills",
+			},
 		},
 	})
 }
@@ -121,15 +123,19 @@ func (a *App) addLoans() {
 // Lily: 40
 // George --> Peter 60 FOOD "Restaurant"
 func (a *App) addSplit() {
-	a.Payment.Split(&model.Transfer{
-		CreditorID: 3,
-		LoanID:     1,
-		DebtID:     3,
-		DebtName:   "food",
-		Loan: model.Loan{
-			DebtorID:    2,
-			Amount:      60,
-			Description: "Restaurant",
+	_ = a.Payment.Split(&model.TransferSplit{
+		Expense: model.Category{
+			ID:   3,
+			Name: "food",
+		},
+		Transfer: model.Transfer{
+			CreditorID:     3,
+			LoanCategoryID: 1,
+			Loan: model.Loan{
+				DebtorID:    2,
+				Amount:      60,
+				Description: "Restaurant",
+			},
 		},
 	})
 }
