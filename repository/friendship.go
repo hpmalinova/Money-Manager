@@ -114,7 +114,7 @@ func (f FriendshipRepoMysql) FindPending(start, count, userID int) ([]int, error
 
 		friends = append(friends, friendID)
 	}
-	rows.Close()
+	_ = rows.Close()
 
 	if err = rows.Err(); err != nil {
 		return nil, err
@@ -133,7 +133,4 @@ func (f FriendshipRepoMysql) DeclineInvite(userOne, userTwo int) error {
 	statement := "DELETE FROM friendship WHERE user_one_id = ? AND user_two_id = ?"
 	_, err := f.db.Exec(statement, userOne, userTwo)
 	return err
-	//statement := "UPDATE friendship SET status = ?, action_user_id = ?  WHERE `user_one_id` = ? AND `user_two_id` = ?"
-	//_, err := f.db.Exec(statement, declined, actionUser, userOne, userTwo)
-	//return err
 }
