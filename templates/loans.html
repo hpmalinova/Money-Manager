@@ -1,0 +1,66 @@
+{{define "loans"}}
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Loans</title>
+    </head>
+    <body>
+    <h3>You have {{.Balance}}lv.</h3>
+    <div>
+        {{if .Pending}}
+            <h3>Pending Requests: </h3>
+            <ol>
+                {{range .Pending}}
+                    <li>
+                        <div class="pending">
+                            <p class="username"><strong>{{.Debtor}}</strong> has sent you a request:
+                                {{.Amount}}lv
+                                {{if .Description}}
+                                    for {{.Description}}
+                                {{end}}
+                            </p>
+                            <form method="POST" action="/index/loans/accept/{{.StatusID}}">
+                                <input type="submit" value="Accept" />
+                            </form>
+                            <form method="POST" action="/index/loans/decline/{{.StatusID}}">
+                                <input type="submit" value="Decline" />
+                            </form>
+                        </div>
+                    </li>
+                {{end}}
+            </ol>
+        {{else}}
+            <h4>You have no pending requests!</h4>
+        {{end}}
+
+        <h3>All loans: </h3>
+        {{if .Active}}
+            <ol>
+                {{$save := .}}
+                {{range .Active}}
+                    <li>
+                        <div class="active">
+                            <p class="username"><strong>{{.Debtor}}</strong> owes you {{.Amount}}lv
+                                {{if .Description}}
+                                    for {{.Description}}
+                                {{end}}
+                            </p>
+                        </div>
+                    </li>
+                {{end}}
+            </ol>
+        {{else}}
+            <h4>No one owes you any money!</h4>
+        {{end}}
+
+    </div>
+    <form method="GET" action="/index/friends">
+        <input type="submit" value="Back" />
+    </form>
+    <form method="GET" action="/index">
+        <input type="submit" value="Index" />
+    </form>
+    </body>
+    </html>
+{{end}}

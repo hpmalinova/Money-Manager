@@ -84,6 +84,9 @@ const (
 	repay = "repay"
 
 	loans = "loans"
+
+	accept  = "accept"
+	decline = "decline"
 )
 
 func (a *App) initializeRoutes() {
@@ -98,8 +101,8 @@ func (a *App) initializeRoutes() {
 	s.HandleFunc("/"+logout, a.logout).Methods(http.MethodPost)
 	s.HandleFunc("/"+users, a.getUsers).Methods(http.MethodGet)
 	s.HandleFunc("/"+friends, a.getFriends).Methods(http.MethodGet, http.MethodPost)
-	s.HandleFunc("/"+friends+"/accept/{username}", a.acceptInvite).Methods(http.MethodPost)
-	s.HandleFunc("/"+friends+"/decline/{username}", a.declineInvite).Methods(http.MethodPost)
+	s.HandleFunc("/"+friends+"/"+accept+"/{username}", a.acceptInvite).Methods(http.MethodPost)
+	s.HandleFunc("/"+friends+"/"+decline+"/{username}", a.declineInvite).Methods(http.MethodPost)
 	s.HandleFunc("/"+friends+"/add", a.addFriend).Methods(http.MethodPost)
 
 	s.HandleFunc("/"+earn, a.earn).Methods(http.MethodGet, http.MethodPost)
@@ -110,7 +113,9 @@ func (a *App) initializeRoutes() {
 	s.HandleFunc("/"+debts, a.getDebts).Methods(http.MethodGet)
 	s.HandleFunc("/"+debts+"/"+repay+"/{id:[0-9]+}", a.requestRepay).Methods(http.MethodPost)
 
-	//s.HandleFunc("/"+loans, a.getLoans).Methods(http.MethodGet)
+	s.HandleFunc("/"+loans, a.getLoans).Methods(http.MethodGet)
+	s.HandleFunc("/"+loans+"/"+accept+"/{id:[0-9]+}", a.acceptPayment).Methods(http.MethodPost)
+	//s.HandleFunc("/"+loans+"/"+decline+"/{id:[0-9]+}", a.declinePayment).Methods(http.MethodPost)
 }
 
 func (a *App) welcome(w http.ResponseWriter, r *http.Request) {
@@ -268,7 +273,7 @@ func (a *App) getFriends(w http.ResponseWriter, r *http.Request) {
 	//count, err, start, done := a.getStartCount(w, r)
 	start, count := 0, 10
 
-	friends, err := a.getFriendsData(start, count, userID)
+	friendsData, err := a.getFriendsData(start, count, userID)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -280,7 +285,7 @@ func (a *App) getFriends(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.Template.ExecuteTemplate(w, "friends", model.GetFriends{Friends: *friends, PendingFriends: *pending})
+	a.Template.ExecuteTemplate(w, friends, model.GetFriends{Friends: *friendsData, PendingFriends: *pending})
 }
 
 func (a *App) acceptInvite(w http.ResponseWriter, r *http.Request) {
@@ -302,7 +307,7 @@ func (a *App) acceptInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/index/friends", http.StatusFound)
+	http.Redirect(w, r, "/"+index+"/"+friends, http.StatusFound)
 }
 
 func (a *App) declineInvite(w http.ResponseWriter, r *http.Request) {
@@ -325,7 +330,7 @@ func (a *App) declineInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/index/friends", http.StatusFound)
+	http.Redirect(w, r, "/"+index+"/"+friends, http.StatusFound)
 }
 
 func (a *App) addFriend(w http.ResponseWriter, r *http.Request) {
@@ -439,7 +444,7 @@ func (a *App) getStartCount(w http.ResponseWriter, r *http.Request) (int, error,
 // I want to pay 20lv for FOOD "Happy"
 // Receive --> user_id, amount, categoryName, description
 func (a *App) pay(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/index/"+pay {
+	if r.URL.Path != "/"+index+"/"+pay {
 		fmt.Println(r.URL.Path)
 		http.Error(w, "404 not found.", http.StatusNotFound)
 		return
@@ -488,7 +493,7 @@ func (a *App) pay(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			respondWithError(w, http.StatusBadRequest, err.Error())
 		}
-		http.Redirect(w, r, "/index/pay", http.StatusFound)
+		http.Redirect(w, r, "/"+index+"/"+pay, http.StatusFound)
 	default:
 		_, _ = fmt.Fprintf(w, "Sorry, only GET and POST methods are supported.")
 	}
@@ -519,6 +524,7 @@ func (a *App) giveLoan(w http.ResponseWriter, r *http.Request) {
 		CreditorID: userID,
 		LoanID:     loanC.ID,
 		DebtID:     debtC.ID,
+		DebtName: debtC.Name,
 		Loan: model.Loan{
 			DebtorID:    friend.ID,
 			Amount:      amount,
@@ -559,6 +565,7 @@ func (a *App) split(w http.ResponseWriter, r *http.Request) {
 		CreditorID: userID,
 		LoanID:     loanC.ID,
 		DebtID:     debtC.ID,
+		DebtName: debtC.Name,
 		Loan: model.Loan{
 			DebtorID:    friend.ID,
 			Amount:      amount,
@@ -572,13 +579,13 @@ func (a *App) split(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/index/pay", http.StatusFound)
+	http.Redirect(w, r, "/"+index+"/"+pay, http.StatusFound)
 }
 
 // I earn 1000lv from SALARY "Job"
 // Receive --> user_id, amount, categoryName, description
 func (a *App) earn(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/index/"+earn {
+	if r.URL.Path != "/"+index+"/"+earn {
 		fmt.Println(r.URL.Path)
 		http.Error(w, "404 not found.", http.StatusNotFound)
 		return
@@ -627,7 +634,7 @@ func (a *App) earn(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			respondWithError(w, http.StatusBadRequest, err.Error())
 		}
-		http.Redirect(w, r, "/index/earn", http.StatusFound)
+		http.Redirect(w, r, "/"+index+"/"+earn, http.StatusFound)
 	default:
 		_, _ = fmt.Fprintf(w, "Sorry, only GET and POST methods are supported.")
 	}
@@ -636,7 +643,7 @@ func (a *App) earn(w http.ResponseWriter, r *http.Request) {
 // Receive --> DebtorID
 // Return --> {StatusID, CreditorID, Amount, CategoryName, Description}
 func (a *App) getDebts(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/index/"+debts {
+	if r.URL.Path != "/"+index+"/"+debts {
 		fmt.Println(r.URL.Path)
 		http.Error(w, "404 not found.", http.StatusNotFound)
 		return
@@ -661,10 +668,12 @@ func (a *App) getDebts(w http.ResponseWriter, r *http.Request) {
 		for _, d := range activeDebts {
 			creditor, _ := a.Users.FindByID(d.CreditorID)
 			ds = append(ds, model.DebtTemplate{
-				StatusID:    d.StatusID,
-				Creditor:    creditor.Username,
-				Amount:      d.Amount,
-				Description: d.Description,
+				Creditor: creditor.Username,
+				DLTemplate: model.DLTemplate{
+					StatusID:    d.StatusID,
+					Amount:      d.Amount,
+					Description: d.Description,
+				},
 			})
 		}
 
@@ -679,9 +688,11 @@ func (a *App) getDebts(w http.ResponseWriter, r *http.Request) {
 		for _, pd := range pendingDebts {
 			creditor, _ := a.Users.FindByID(pd.CreditorID)
 			pds = append(pds, model.DebtTemplate{
-				Creditor:    creditor.Username,
-				Amount:      pd.Amount,
-				Description: pd.Description,
+				Creditor: creditor.Username,
+				DLTemplate: model.DLTemplate{
+					Amount:      pd.Amount,
+					Description: pd.Description,
+				},
 			})
 		}
 
@@ -711,21 +722,101 @@ func (a *App) requestRepay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w,r, "/"+index+"/"+debts, http.StatusFound)
+	http.Redirect(w, r, "/"+index+"/"+debts, http.StatusFound)
 }
 
-//// Receive --> CreditorID
-//// Return --> {DebtorID, Amount, Description}
-//func (a *App) getLoans(w http.ResponseWriter, r *http.Request) {
-//	// todo userid
-//	var userID int
-//
-//	loans, err := a.Payment.FindActiveLoans(userID)
-//	if err != nil {
-//		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
-//		return
-//	}
-//
-//	respondWithJSON(w, http.StatusOK, loans)
-//}
+// Receive --> CreditorID
+// Return --> {DebtorID, Amount, Description}
+func (a *App) getLoans(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/"+index+"/"+loans {
+		fmt.Println(r.URL.Path)
+		http.Error(w, "404 not found.", http.StatusNotFound)
+		return
+	}
 
+	switch r.Method {
+	case "GET":
+		user := r.Context().Value("user").(*model.UserToken)
+		userID, _ := strconv.Atoi(user.UserID)
+
+		// Show balance
+		balance, _ := a.Payment.CheckBalance(userID)
+
+		// Show loans:
+		activeLoans, err := a.Payment.FindActiveLoans(userID)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		als := make([]model.LoanTemplate, 0, len(activeLoans))
+		for _, al := range activeLoans {
+			debtor, _ := a.Users.FindByID(al.DebtorID)
+			als = append(als, model.LoanTemplate{
+				Debtor: debtor.Username,
+				DLTemplate: model.DLTemplate{
+					Amount:      al.Amount,
+					Description: al.Description,
+				},
+			})
+		}
+
+		// Show pending requests:
+		pendingRequests, err := a.Payment.FindPendingRequests(userID)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		prs := make([]model.LoanTemplate, 0, len(pendingRequests))
+		for _, pr := range pendingRequests {
+			debtor, _ := a.Users.FindByID(pr.DebtorID)
+			prs = append(prs, model.LoanTemplate{
+				Debtor: debtor.Username,
+				DLTemplate: model.DLTemplate{
+					StatusID:    pr.StatusID,
+					Amount:      pr.Amount,
+					Description: pr.Description,
+				},
+			})
+		}
+
+		_ = a.Template.ExecuteTemplate(w, loans, model.LoansTemplate{Active: als, Pending: prs, Balance: balance})
+		//case "POST":
+	}
+}
+
+// Peter has sent you a repay request. You acceptPayment.
+// Receive --> statusID
+func (a *App) acceptPayment(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	status := vars["id"]
+	statusID, _ := strconv.Atoi(status)
+
+	expenseC := a.getCategoryByName(a.getCategoryByStatus(statusID))
+	repayC := a.getCategoryByName("receive")
+
+	am := &model.Accept{StatusID: statusID, RepayC: *repayC, ExpenseC: *expenseC}
+
+	if err := a.Payment.AcceptPayment(am); err != nil {
+		msg := fmt.Sprintf("Error accepting payment: %v", err.Error())
+		respondWithError(w, http.StatusInternalServerError, msg)
+		return
+	}
+	http.Redirect(w,r, "/"+index+"/"+loans, http.StatusFound)
+}
+
+// Peter has sent you a repay request. You declinePayment.
+// Receive --> statusID
+func (a *App) declinePayment(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	status := vars["id"]
+	statusID, _ := strconv.Atoi(status)
+
+	if err := a.Payment.DeclinePayment(statusID); err != nil {
+		fmt.Printf("Error declining request: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Invalid request payload")
+		return
+	}
+	http.Redirect(w,r, "/"+index+"/"+loans, http.StatusFound)
+}

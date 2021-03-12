@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
-	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
 	"github.com/hpmalinova/Money-Manager/model"
 	"golang.org/x/crypto/bcrypt"
@@ -16,20 +15,21 @@ import (
 )
 
 // Users //
-func (a *App) login(w http.ResponseWriter, r *http.Request) {
-	userCredentials := &model.UserLogin{}
-	err := json.NewDecoder(r.Body).Decode(userCredentials)
-	if err != nil {
-		fmt.Printf("Error logging user %v: %v", userCredentials, err)
-		var resp = map[string]interface{}{"status": false, "message": "Invalid request"}
-		_ = json.NewEncoder(w).Encode(resp)
-		return
-	}
-	resp, err := a.checkCredentials(w, userCredentials.Username, userCredentials.Password)
-	if err == nil {
-		_ = json.NewEncoder(w).Encode(resp)
-	}
-}
+
+//func (a *App) login(w http.ResponseWriter, r *http.Request) {
+//	userCredentials := &model.UserLogin{}
+//	err := json.NewDecoder(r.Body).Decode(userCredentials)
+//	if err != nil {
+//		fmt.Printf("Error logging user %v: %v", userCredentials, err)
+//		var resp = map[string]interface{}{"status": false, "message": "Invalid request"}
+//		_ = json.NewEncoder(w).Encode(resp)
+//		return
+//	}
+//	resp, err := a.checkCredentials(w, userCredentials.Username, userCredentials.Password)
+//	if err == nil {
+//		_ = json.NewEncoder(w).Encode(resp)
+//	}
+//}
 
 func (a *App) checkCredentials(w http.ResponseWriter, username, password string) (map[string]string, error) {
 	user, err := a.Users.FindByUsername(username)
@@ -63,48 +63,48 @@ func (a *App) checkCredentials(w http.ResponseWriter, username, password string)
 	return resp, nil
 }
 
-func (a *App) register(w http.ResponseWriter, r *http.Request) {
-	user := &model.User{}
-
-	// r.Body: {"username":"peter", "password": "123"}
-	if err := json.NewDecoder(r.Body).Decode(user); err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
-		return
-	}
-
-	//decoder := json.NewDecoder(r.Body)
-	//if err := decoder.Decode(user); err != nil {
-	//	respondWithError(w, http.StatusBadRequest, "Invalid request payload")
-	//	return
-	//}
-
-	// Validate User struct
-	err := a.Validator.Struct(user)
-	if err != nil {
-		// translate all error at once
-		errs := err.(validator.ValidationErrors)
-		respondWithValidationError(errs.Translate(a.Translator), w)
-		return
-	}
-
-	// Hash the password with bcrypt
-	pass, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
-	if err != nil {
-		fmt.Println(err)
-		respondWithError(w, http.StatusInternalServerError, "Password Encryption  failed")
-		return
-	}
-	user.Password = string(pass)
-
-	if user, err = a.Users.Create(user); err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	// remove user password
-	user.Password = ""
-
-	respondWithJSON(w, http.StatusCreated, user)
-}
+//func (a *App) register(w http.ResponseWriter, r *http.Request) {
+//	user := &model.User{}
+//
+//	// r.Body: {"username":"peter", "password": "123"}
+//	if err := json.NewDecoder(r.Body).Decode(user); err != nil {
+//		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+//		return
+//	}
+//
+//	//decoder := json.NewDecoder(r.Body)
+//	//if err := decoder.Decode(user); err != nil {
+//	//	respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+//	//	return
+//	//}
+//
+//	// Validate User struct
+//	err := a.Validator.Struct(user)
+//	if err != nil {
+//		// translate all error at once
+//		errs := err.(validator.ValidationErrors)
+//		respondWithValidationError(errs.Translate(a.Translator), w)
+//		return
+//	}
+//
+//	// Hash the password with bcrypt
+//	pass, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+//	if err != nil {
+//		fmt.Println(err)
+//		respondWithError(w, http.StatusInternalServerError, "Password Encryption  failed")
+//		return
+//	}
+//	user.Password = string(pass)
+//
+//	if user, err = a.Users.Create(user); err != nil {
+//		respondWithError(w, http.StatusInternalServerError, err.Error())
+//		return
+//	}
+//	// remove user password
+//	user.Password = ""
+//
+//	respondWithJSON(w, http.StatusCreated, user)
+//}
 
 //func (a *App) getUsers(w http.ResponseWriter, r *http.Request) {
 //	//ctx := r.Context()
@@ -258,52 +258,52 @@ func (a *App) getUser(w http.ResponseWriter, r *http.Request) {
 //	respondWithJSON(w, http.StatusOK, friendIDs)
 //}
 
-func (a *App) getPending(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	userID, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
-		return
-	}
-
-	count, err := strconv.Atoi(r.FormValue("count"))
-	if err != nil && r.FormValue("count") != "" {
-		respondWithError(w, http.StatusBadRequest, "Invalid request count parameter")
-		return
-	}
-	start, err := strconv.Atoi(r.FormValue("start"))
-	if err != nil && r.FormValue("start") != "" {
-		respondWithError(w, http.StatusBadRequest, "Invalid request start parameter")
-		return
-	}
-
-	const (
-		minOffset = 0
-		minLimit  = 1
-		maxLimit  = 10
-	)
-
-	start--
-	if count > maxLimit || count < minLimit {
-		count = maxLimit
-	}
-	if start < minOffset {
-		start = minOffset
-	}
-
-	/////////////////////////////////////////////////////////////////
-
-	// TODO
-	friendIDs, err := a.Friendship.FindPending(start, count, userID)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	// TODO convert to usernames
-	//a.Users.
-	respondWithJSON(w, http.StatusOK, friendIDs)
-}
+//func (a *App) getPending(w http.ResponseWriter, r *http.Request) {
+//	vars := mux.Vars(r)
+//	userID, err := strconv.Atoi(vars["id"])
+//	if err != nil {
+//		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+//		return
+//	}
+//
+//	count, err := strconv.Atoi(r.FormValue("count"))
+//	if err != nil && r.FormValue("count") != "" {
+//		respondWithError(w, http.StatusBadRequest, "Invalid request count parameter")
+//		return
+//	}
+//	start, err := strconv.Atoi(r.FormValue("start"))
+//	if err != nil && r.FormValue("start") != "" {
+//		respondWithError(w, http.StatusBadRequest, "Invalid request start parameter")
+//		return
+//	}
+//
+//	const (
+//		minOffset = 0
+//		minLimit  = 1
+//		maxLimit  = 10
+//	)
+//
+//	start--
+//	if count > maxLimit || count < minLimit {
+//		count = maxLimit
+//	}
+//	if start < minOffset {
+//		start = minOffset
+//	}
+//
+//	/////////////////////////////////////////////////////////////////
+//
+//	// TODO
+//	friendIDs, err := a.Friendship.FindPending(start, count, userID)
+//	if err != nil {
+//		respondWithError(w, http.StatusInternalServerError, err.Error())
+//		return
+//	}
+//
+//	// TODO convert to usernames
+//	//a.Users.
+//	respondWithJSON(w, http.StatusOK, friendIDs)
+//}
 
 //func (a *App) acceptInvite(w http.ResponseWriter, r *http.Request) {
 //	vars := mux.Vars(r)
@@ -674,84 +674,84 @@ func (a *App) getCategoryByStatus(statusID int) string {
 // The user waits for Peter to accept his payment
 // Receive --> debtorID
 // Return  --> {creditor, amount, description}
-func (a *App) getPendingDebts(w http.ResponseWriter, r *http.Request) {
-	// todo userid
-	var userID int
+//func (a *App) getPendingDebts(w http.ResponseWriter, r *http.Request) {
+//	// todo userid
+//	var userID int
+//
+//	debts, err := a.Payment.FindPendingDebts(userID)
+//	if err != nil {
+//		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+//		return
+//	}
+//
+//	respondWithJSON(w, http.StatusOK, debts)
+//}
 
-	debts, err := a.Payment.FindPendingDebts(userID)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
-		return
-	}
+//// Peter has sent you a repay request.
+//// Will you (as creditor) accept or decline it?
+//// Receive --> creditorID
+//// Return  --> {debtorID, pendingAmount, description, statusID}
+//func (a *App) getPendingRequests(w http.ResponseWriter, r *http.Request) {
+//	// todo userID == creditorID
+//	var userID int
+//
+//	loans, err := a.Payment.FindPendingRequests(userID)
+//	if err != nil {
+//		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+//		return
+//	}
+//
+//	respondWithJSON(w, http.StatusOK, loans)
+//}
 
-	respondWithJSON(w, http.StatusOK, debts)
-}
-
-// Peter has sent you a repay request.
-// Will you (as creditor) accept or decline it?
-// Receive --> creditorID
-// Return  --> {debtorID, pendingAmount, description, statusID}
-func (a *App) getPendingRequests(w http.ResponseWriter, r *http.Request) {
-	// todo userID == creditorID
-	var userID int
-
-	loans, err := a.Payment.FindPendingRequests(userID)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid user ID")
-		return
-	}
-
-	respondWithJSON(w, http.StatusOK, loans)
-}
-
-// Peter has sent you a repay request. You acceptPayment.
-// Receive --> statusID
-func (a *App) acceptPayment(w http.ResponseWriter, r *http.Request) {
-	var statusID int
-	err := json.NewDecoder(r.Body).Decode(&statusID)
-	if err != nil {
-		fmt.Printf("Error accepting payment: %v", err)
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
-		return
-	}
-
-	expenseC := a.getCategoryByName(a.getCategoryByStatus(statusID))
-	repayC := a.getCategoryByName("receive")
-
-	//var repay = "Repay"
-	//repayC, err := a.Categories.FindByName(repay)
-	//if err != nil {
-	//	msg := fmt.Sprintf("No category: %s", repay)
-	//	respondWithError(w, http.StatusInternalServerError, msg)
-	//	return
-	//}
-
-	am := &model.Accept{StatusID: statusID, RepayC: *repayC, ExpenseC: *expenseC}
-
-	if err = a.Payment.AcceptPayment(am); err != nil {
-		msg := fmt.Sprintf("Error accepting payment: %v", err.Error())
-		respondWithError(w, http.StatusInternalServerError, msg)
-		return
-	}
-}
-
-// Peter has sent you a repay request. You declinePayment.
-// Receive --> statusID
-func (a *App) declinePayment(w http.ResponseWriter, r *http.Request) {
-	var statusID int
-	err := json.NewDecoder(r.Body).Decode(&statusID)
-	if err != nil {
-		fmt.Printf("Error declining payment: %v", err)
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
-		return
-	}
-
-	if err := a.Payment.DeclinePayment(statusID); err != nil {
-		fmt.Printf("Error declining request: %v", err)
-		respondWithError(w, http.StatusInternalServerError, "Invalid request payload")
-		return
-	}
-}
+//// Peter has sent you a repay request. You acceptPayment.
+//// Receive --> statusID
+//func (a *App) acceptPayment(w http.ResponseWriter, r *http.Request) {
+//	var statusID int
+//	err := json.NewDecoder(r.Body).Decode(&statusID)
+//	if err != nil {
+//		fmt.Printf("Error accepting payment: %v", err)
+//		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+//		return
+//	}
+//
+//	expenseC := a.getCategoryByName(a.getCategoryByStatus(statusID))
+//	repayC := a.getCategoryByName("receive")
+//
+//	//var repay = "Repay"
+//	//repayC, err := a.Categories.FindByName(repay)
+//	//if err != nil {
+//	//	msg := fmt.Sprintf("No category: %s", repay)
+//	//	respondWithError(w, http.StatusInternalServerError, msg)
+//	//	return
+//	//}
+//
+//	am := &model.Accept{StatusID: statusID, RepayC: *repayC, ExpenseC: *expenseC}
+//
+//	if err = a.Payment.AcceptPayment(am); err != nil {
+//		msg := fmt.Sprintf("Error accepting payment: %v", err.Error())
+//		respondWithError(w, http.StatusInternalServerError, msg)
+//		return
+//	}
+//}
+//
+//// Peter has sent you a repay request. You declinePayment.
+//// Receive --> statusID
+//func (a *App) declinePayment(w http.ResponseWriter, r *http.Request) {
+//	var statusID int
+//	err := json.NewDecoder(r.Body).Decode(&statusID)
+//	if err != nil {
+//		fmt.Printf("Error declining payment: %v", err)
+//		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+//		return
+//	}
+//
+//	if err := a.Payment.DeclinePayment(statusID); err != nil {
+//		fmt.Printf("Error declining request: %v", err)
+//		respondWithError(w, http.StatusInternalServerError, "Invalid request payload")
+//		return
+//	}
+//}
 
 // TODO check history!
 // TODO statistics

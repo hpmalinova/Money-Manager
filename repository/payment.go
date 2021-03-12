@@ -503,8 +503,7 @@ func (p *PaymentRepoMysql) AcceptPayment(a *model.Accept) error {
 		statement = "UPDATE debt_status SET status = ?, amount = ? WHERE id = ?"
 		_, err = tx.ExecContext(ctx, statement, ongoingStatus, ap.DebtAmount-ap.PendingAmount, a.StatusID)
 		if err != nil {
-			msg := fmt.Sprintf("not enough money: %s", err.Error())
-			return errors.New(msg)
+			return err
 		}
 	} else if ap.PendingAmount == ap.DebtAmount {
 		// Delete the debt

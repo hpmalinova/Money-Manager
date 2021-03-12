@@ -6,6 +6,12 @@ type PayTemplate struct {
 	Friends    []string
 }
 
+type DLTemplate struct {
+	StatusID    int
+	Amount      int
+	Description string
+}
+
 type DebtsTemplate struct {
 	Active  []DebtTemplate
 	Pending []DebtTemplate
@@ -13,8 +19,17 @@ type DebtsTemplate struct {
 }
 
 type DebtTemplate struct {
-	StatusID    int
-	Creditor    string
-	Amount      int
-	Description string
+	Creditor string
+	DLTemplate
+}
+
+type LoansTemplate struct {
+	Active  []LoanTemplate
+	Pending []LoanTemplate
+	Balance int
+}
+
+type LoanTemplate struct {
+	Debtor string
+	DLTemplate
 }
