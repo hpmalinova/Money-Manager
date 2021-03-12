@@ -8,10 +8,10 @@ type Pay struct {
 }
 
 type Transfer struct {
-	CreditorID int `json:"debtorID" validate:"numeric,gte=0"`
-	LoanID     int `json:"loanID" validate:"numeric,gte=0"`
-	DebtID     int `json:"debtID" validate:"numeric,gte=0"`
-	DebtName string `json:"debtName" validate:"required,min=3,max=32"`
+	CreditorID int    `json:"debtorID" validate:"numeric,gte=0"`
+	LoanID     int    `json:"loanID" validate:"numeric,gte=0"`
+	DebtID     int    `json:"debtID" validate:"numeric,gte=0"`
+	DebtName   string `json:"debtName" validate:"required,min=3,max=32"`
 	Loan
 }
 

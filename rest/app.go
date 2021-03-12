@@ -58,6 +58,15 @@ func (a *App) Init(user, password, dbname string) {
 	a.Router = mux.NewRouter()
 	a.Template = template.Must(template.ParseGlob("templates/*"))
 	a.initializeRoutes()
+
+	a.AddRegisteredUsers()
+}
+
+func (a *App) AddRegisteredUsers() {
+	_, _ = a.Users.Create(&model.User{Username: "Hrisi", Password: "love"})
+	_, _ = a.Users.Create(&model.User{Username: "Peter", Password: "1234"})
+	_, _ = a.Users.Create(&model.User{Username: "George", Password: "1234"})
+	_, _ = a.Users.Create(&model.User{Username: "Lily", Password: "1234"})
 }
 
 func (a *App) Run(port string) {
@@ -68,31 +77,25 @@ const (
 	welcome  = "welcome"
 	register = "register"
 	login    = "login"
-
-	index  = "index"
-	logout = "logout"
-
-	users   = "users"
-	friends = "friends"
-
+	index    = "index"
+	logout   = "logout"
+	users    = "users"
+	friends  = "friends"
 	earn     = "earn"
 	pay      = "pay"
 	giveLoan = "loan"
 	split    = "split"
-
-	debts = "debts"
-	repay = "repay"
-
-	loans = "loans"
-
-	accept  = "accept"
-	decline = "decline"
+	debts    = "debts"
+	repay    = "repay"
+	loans    = "loans"
+	accept   = "accept"
+	decline  = "decline"
 )
 
 func (a *App) initializeRoutes() {
 	a.Router.HandleFunc("/", a.welcome).Methods(http.MethodGet)
-	a.Router.HandleFunc("/"+register, a.registerHandler).Methods(http.MethodGet, http.MethodPost)
-	a.Router.HandleFunc("/"+login, a.loginHandler).Methods(http.MethodGet, http.MethodPost)
+	a.Router.HandleFunc("/"+register, a.register).Methods(http.MethodGet, http.MethodPost)
+	a.Router.HandleFunc("/"+login, a.login).Methods(http.MethodGet, http.MethodPost)
 
 	// Auth route
 	s := a.Router.PathPrefix("/" + index).Subrouter()
@@ -115,14 +118,16 @@ func (a *App) initializeRoutes() {
 
 	s.HandleFunc("/"+loans, a.getLoans).Methods(http.MethodGet)
 	s.HandleFunc("/"+loans+"/"+accept+"/{id:[0-9]+}", a.acceptPayment).Methods(http.MethodPost)
-	//s.HandleFunc("/"+loans+"/"+decline+"/{id:[0-9]+}", a.declinePayment).Methods(http.MethodPost)
+	s.HandleFunc("/"+loans+"/"+decline+"/{id:[0-9]+}", a.declinePayment).Methods(http.MethodPost)
 }
+
+// Handlers
 
 func (a *App) welcome(w http.ResponseWriter, r *http.Request) {
 	_ = a.Template.ExecuteTemplate(w, welcome, nil)
 }
 
-func (a *App) registerHandler(w http.ResponseWriter, r *http.Request) {
+func (a *App) register(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/"+register {
 		http.Error(w, "404 not found.", http.StatusNotFound)
 		return
@@ -173,7 +178,7 @@ func (a *App) registerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (a *App) loginHandler(w http.ResponseWriter, r *http.Request) {
+func (a *App) login(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/"+login {
 		fmt.Println(r.URL.Path)
 		http.Error(w, "404 not found.", http.StatusNotFound)
@@ -230,7 +235,7 @@ func (a *App) index(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-//todo
+// TODO
 func (a *App) logout(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("logout")
 	http.SetCookie(w, &http.Cookie{
@@ -376,69 +381,6 @@ func (a *App) addFriend(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/index/friends", http.StatusFound)
 }
 
-// HELPER
-func (a *App) getFriendsData(start, count, userID int) (*model.Friends, error) {
-	friendIDs, err := a.Friendship.Find(start, count, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	friendNames, err := a.convertToUsername(friendIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	return &model.Friends{Usernames: friendNames}, nil
-}
-
-func (a *App) getPendingFriendsData(start, count, userID int) (*model.Friends, error) {
-	friendIDs, err := a.Friendship.FindPending(start, count, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	friendNames, err := a.convertToUsername(friendIDs)
-
-	return &model.Friends{Usernames: friendNames}, nil
-}
-
-func (a *App) convertToUsername(ids []int) ([]string, error) {
-	usernames, err := a.Users.FindNamesByIDs(ids)
-	if err != nil {
-		return nil, err
-	}
-	return usernames, nil
-}
-
-//todo
-func (a *App) getStartCount(w http.ResponseWriter, r *http.Request) (int, error, int, bool) {
-	count, err := strconv.Atoi(r.FormValue("count"))
-	if err != nil && r.FormValue("count") != "" {
-		respondWithError(w, http.StatusBadRequest, "Invalid request count parameter")
-		return 0, nil, 0, true
-	}
-	start, err := strconv.Atoi(r.FormValue("start"))
-	if err != nil && r.FormValue("start") != "" {
-		respondWithError(w, http.StatusBadRequest, "Invalid request start parameter")
-		return 0, nil, 0, true
-	}
-
-	const (
-		minOffset = 0
-		minLimit  = 1
-		maxLimit  = 10
-	)
-
-	start--
-	if count > maxLimit || count < minLimit {
-		count = maxLimit
-	}
-	if start < minOffset {
-		start = minOffset
-	}
-	return count, err, start, false
-}
-
 // PAYMENT
 
 // I want to pay 20lv for FOOD "Happy"
@@ -524,7 +466,7 @@ func (a *App) giveLoan(w http.ResponseWriter, r *http.Request) {
 		CreditorID: userID,
 		LoanID:     loanC.ID,
 		DebtID:     debtC.ID,
-		DebtName: debtC.Name,
+		DebtName:   debtC.Name,
 		Loan: model.Loan{
 			DebtorID:    friend.ID,
 			Amount:      amount,
@@ -565,7 +507,7 @@ func (a *App) split(w http.ResponseWriter, r *http.Request) {
 		CreditorID: userID,
 		LoanID:     loanC.ID,
 		DebtID:     debtC.ID,
-		DebtName: debtC.Name,
+		DebtName:   debtC.Name,
 		Loan: model.Loan{
 			DebtorID:    friend.ID,
 			Amount:      amount,
@@ -803,7 +745,7 @@ func (a *App) acceptPayment(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusInternalServerError, msg)
 		return
 	}
-	http.Redirect(w,r, "/"+index+"/"+loans, http.StatusFound)
+	http.Redirect(w, r, "/"+index+"/"+loans, http.StatusFound)
 }
 
 // Peter has sent you a repay request. You declinePayment.
@@ -818,5 +760,5 @@ func (a *App) declinePayment(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusInternalServerError, "Invalid request payload")
 		return
 	}
-	http.Redirect(w,r, "/"+index+"/"+loans, http.StatusFound)
+	http.Redirect(w, r, "/"+index+"/"+loans, http.StatusFound)
 }
