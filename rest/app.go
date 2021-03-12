@@ -108,7 +108,7 @@ func (a *App) initializeRoutes() {
 	s.HandleFunc("/"+split, a.split).Methods(http.MethodPost)
 
 	s.HandleFunc("/"+debts, a.getDebts).Methods(http.MethodGet)
-	//s.HandleFunc("/"+debts+"/"+repay+"/{id:[0-9]+}", a.requestRepay).Methods(http.MethodPost)
+	s.HandleFunc("/"+debts+"/"+repay+"/{id:[0-9]+}", a.requestRepay).Methods(http.MethodPost)
 
 	//s.HandleFunc("/"+loans, a.getLoans).Methods(http.MethodGet)
 }
@@ -690,6 +690,30 @@ func (a *App) getDebts(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// I want to requestRepay => return my debt
+// Receive --> debtID, amount
+func (a *App) requestRepay(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	debtIDS := vars["id"]
+	debtID, _ := strconv.Atoi(debtIDS)
+
+	if err := r.ParseForm(); err != nil {
+		_, _ = fmt.Fprintf(w, "ParseForm() err: %v", err)
+		return
+	}
+	amountS := r.FormValue("amount")
+	amount, _ := strconv.Atoi(amountS)
+
+	err := a.Payment.RequestRepay(debtID, amount)
+	if err != nil {
+		fmt.Printf("Error requesting repay: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Invalid transfer")
+		return
+	}
+
+	http.Redirect(w,r, "/"+index+"/"+debts, http.StatusFound)
+}
+
 //// Receive --> CreditorID
 //// Return --> {DebtorID, Amount, Description}
 //func (a *App) getLoans(w http.ResponseWriter, r *http.Request) {
@@ -704,23 +728,4 @@ func (a *App) getDebts(w http.ResponseWriter, r *http.Request) {
 //
 //	respondWithJSON(w, http.StatusOK, loans)
 //}
-//
-//// I want to requestRepay => return my debt
-//// Receive --> debtID, amount
-//func (a *App) requestRepay(w http.ResponseWriter, r *http.Request) {
-//	rr := &model.RepayRequest{}
-//	err := json.NewDecoder(r.Body).Decode(rr)
-//
-//	if err != nil {
-//		fmt.Printf("Error requesting repay: %v", err)
-//		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
-//		return
-//	}
-//
-//	err = a.Payment.RequestRepay(rr.DebtID, rr.Amount)
-//	if err != nil {
-//		fmt.Printf("Error requesting repay: %v", err)
-//		respondWithError(w, http.StatusInternalServerError, "Invalid transfer")
-//		return
-//	}
-//}
+
