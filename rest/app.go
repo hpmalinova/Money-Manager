@@ -59,14 +59,7 @@ func (a *App) Init(user, password, dbname string) {
 	a.Template = template.Must(template.ParseGlob("templates/*"))
 	a.initializeRoutes()
 
-	a.AddRegisteredUsers()
-}
-
-func (a *App) AddRegisteredUsers() {
-	_, _ = a.Users.Create(&model.User{Username: "Hrisi", Password: "love"})
-	_, _ = a.Users.Create(&model.User{Username: "Peter", Password: "1234"})
-	_, _ = a.Users.Create(&model.User{Username: "George", Password: "1234"})
-	_, _ = a.Users.Create(&model.User{Username: "Lily", Password: "1234"})
+	a.AddData()
 }
 
 func (a *App) Run(port string) {
@@ -378,7 +371,7 @@ func (a *App) addFriend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/index/friends", http.StatusFound)
+	http.Redirect(w, r, "/"+index+"/"+friends, http.StatusFound)
 }
 
 // PAYMENT
