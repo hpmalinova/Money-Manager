@@ -1,0 +1,79 @@
+{{define "history"}}
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>History</title>
+    </head>
+    <body>
+            {{if .HistoryShowAll}}
+                <h3>History: </h3>
+                <ul style="list-style-type:none;">
+                    {{range .HistoryShowAll}}
+                        <li>
+                            <div class="history">
+                                <p>
+                                    {{.CategoryType}} {{.Amount}}lv: {{.CategoryName}}
+                                    {{if .Description}}for {{.Description}}{{end}}
+                                </p>
+                            </div>
+                        </li>
+                    {{end}}
+                </ul>
+            {{else}}
+                <h4>You have no history!</h4>
+            {{end}}
+
+{{/*    <h3>You have {{.Balance}}lv.</h3>*/}}
+{{/*    <div>*/}}
+{{/*        {{if .Pending}}*/}}
+{{/*            <h3>Pending Debts: </h3>*/}}
+{{/*            <ol>*/}}
+{{/*                {{range .Pending}}*/}}
+{{/*                    <li>*/}}
+{{/*                        <div class="pending">*/}}
+{{/*                            <p class="username">You are waiting for {{.Creditor}} to accept your payment:*/}}
+{{/*                                {{.Amount}}lv*/}}
+{{/*                                {{if .Description}}*/}}
+{{/*                                    for {{.Description}}*/}}
+{{/*                                {{end}}*/}}
+{{/*                            </p>*/}}
+{{/*                        </div>*/}}
+{{/*                    </li>*/}}
+{{/*                {{end}}*/}}
+{{/*            </ol>*/}}
+{{/*            */}}{{/*        {{else}}*/}}
+{{/*            */}}{{/*            <h4>You have no pending requests!</h4>*/}}
+{{/*        {{end}}*/}}
+
+{{/*        <h3>All debts: </h3>*/}}
+{{/*        {{if .Active}}*/}}
+{{/*            <ol>*/}}
+{{/*                {{$save := .}}*/}}
+{{/*                {{range .Active}}*/}}
+{{/*                    <li>*/}}
+{{/*                        <div class="active">*/}}
+{{/*                            <p class="username">You owe {{.Creditor}} {{.Amount}}lv*/}}
+{{/*                                {{if .Description}}*/}}
+{{/*                                    for {{.Description}}*/}}
+{{/*                                {{end}}*/}}
+{{/*                            </p>*/}}
+{{/*                            <form method="POST" action="/index/debts/repay/{{.StatusID}}">*/}}
+{{/*                                <input name="amount" type="number" value="" min="1" max={{$save.Balance}} required />*/}}
+{{/*                                <input type="submit" value="Repay" />*/}}
+{{/*                            </form>*/}}
+{{/*                        </div>*/}}
+{{/*                    </li>*/}}
+{{/*                {{end}}*/}}
+{{/*            </ol>*/}}
+{{/*        {{else}}*/}}
+{{/*            <h4>You don`t owe any money!</h4>*/}}
+{{/*        {{end}}*/}}
+
+{{/*    </div>*/}}
+    <form method="GET" action="/index">
+        <input type="submit" value="Back" />
+    </form>
+    </body>
+    </html>
+{{end}}

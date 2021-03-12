@@ -83,6 +83,7 @@ const (
 	loans    = "loans"
 	accept   = "accept"
 	decline  = "decline"
+	history = "history"
 )
 
 func (a *App) initializeRoutes() {
@@ -112,6 +113,8 @@ func (a *App) initializeRoutes() {
 	s.HandleFunc("/"+loans, a.getLoans).Methods(http.MethodGet)
 	s.HandleFunc("/"+loans+"/"+accept+"/{id:[0-9]+}", a.acceptPayment).Methods(http.MethodPost)
 	s.HandleFunc("/"+loans+"/"+decline+"/{id:[0-9]+}", a.declinePayment).Methods(http.MethodPost)
+
+	s.HandleFunc("/"+history, a.getHistory).Methods(http.MethodGet)
 }
 
 // Handlers
@@ -461,10 +464,10 @@ func (a *App) giveLoan(w http.ResponseWriter, r *http.Request) {
 	t := &model.TransferLoan{
 		DebtCategoryID:    debtC.ID,
 		RepayCategoryName: repayC.Name,
-		Transfer:          model.Transfer{
+		Transfer: model.Transfer{
 			CreditorID:     userID,
 			LoanCategoryID: loanC.ID,
-			Loan:           model.Loan{
+			Loan: model.Loan{
 				DebtorID:    friend.ID,
 				Amount:      amount,
 				Description: description,
@@ -503,11 +506,11 @@ func (a *App) split(w http.ResponseWriter, r *http.Request) {
 	expenseC, _ := a.Categories.FindByName(categoryName)
 
 	t := &model.TransferSplit{
-		Expense:  *expenseC,
+		Expense: *expenseC,
 		Transfer: model.Transfer{
 			CreditorID:     userID,
 			LoanCategoryID: loanC.ID,
-			Loan:           model.Loan{
+			Loan: model.Loan{
 				DebtorID:    friend.ID,
 				Amount:      amount,
 				Description: description,
@@ -762,3 +765,25 @@ func (a *App) declinePayment(w http.ResponseWriter, r *http.Request) {
 	}
 	http.Redirect(w, r, "/"+index+"/"+loans, http.StatusFound)
 }
+
+func (a *App) getHistory(w http.ResponseWriter, r *http.Request){
+	userID, _ := strconv.Atoi(r.Context().Value("user").(*model.UserToken).UserID)
+
+	h, err := a.Payment.FindHistory(userID)
+	if err != nil {
+		msg := fmt.Sprintf("Error getting history: %v", err.Error())
+		respondWithError(w, http.StatusInternalServerError, msg)
+		return
+	}
+
+	for i, hs := range h.HistoryShowAll{
+		if hs.CategoryType == "expense" {
+			h.HistoryShowAll[i].CategoryType = "-"
+		} else {
+			h.HistoryShowAll[i].CategoryType = "+"
+		}
+	}
+
+	a.Template.ExecuteTemplate(w, history, h)
+}
+

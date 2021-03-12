@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/hpmalinova/Money-Manager/model"
 	"log"
+	"math"
 	"time"
 )
 
@@ -588,4 +589,82 @@ func (p *PaymentRepoMysql) FindCategoryName(statusID int) (categoryName string, 
 	statement := `SELECT category FROM debts WHERE status_id=?`
 	err = p.db.QueryRow(statement, statusID).Scan(&categoryName)
 	return categoryName, err
+}
+
+func (p *PaymentRepoMysql) FindHistory(userID int) (*model.HistoryShowAll, error) {
+	aps := []model.HistoryShow{}
+	statement := `SELECT m.amount, m.description, c.c_type, c.name
+					FROM money_history AS m
+					INNER JOIN categories AS c
+						ON m.category_id = c.id
+					WHERE m.uid=?`
+	results, err := p.db.Query(statement, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	for results.Next() {
+		ap := model.HistoryShow{}
+		err = results.Scan(&ap.Amount, &ap.Description, &ap.CategoryType, &ap.CategoryName)
+		if err != nil {
+			return nil, err
+		}
+		aps = append(aps, ap)
+	}
+	return &model.HistoryShowAll{HistoryShowAll: aps}, nil
+}
+
+// t: true == "expense" or false == "income"
+func (p *PaymentRepoMysql) FindStatistics(userID int, t bool) (*model.Statistics, error) {
+	statement := `SELECT SUM(amount) 
+					FROM money_history as m
+					JOIN categories as c 
+						ON m.category_id=c.id
+					WHERE uid=? AND c.c_type=?;`
+	var cType string
+	if t {
+		cType = "expense"
+	} else {
+		cType = "income"
+	}
+	var sum int
+	err := p.db.QueryRow(statement, userID, cType).Scan(&sum)
+	if err != nil {
+		return nil, err
+	}
+
+	if sum <= 0 {
+		rs := []model.Ratio{}
+		r := model.Ratio{
+			Percent:      "0",
+			CategoryName: "No "+cType+"s!",
+		}
+		rs = append(rs, r)
+		return &model.Statistics{Ratios: rs}, nil
+	}
+
+	statement = `SELECT c.name, SUM(amount) 
+					FROM money_history as m
+					JOIN categories as c 
+						ON m.category_id=c.id
+					WHERE uid=? AND c.c_type=?
+					group by c.name;`
+	results, err := p.db.Query(statement, userID, cType)
+	if err != nil {
+		return nil, err
+	}
+
+	rs := []model.Ratio{}
+	for results.Next() {
+		r := model.Ratio{}
+		var s int
+		err = results.Scan(&r.CategoryName, &s)
+		if err != nil {
+			return nil, err
+		}
+		percent := math.Round(float64(s) / float64(sum))
+		r.Percent = fmt.Sprintf("%.2f", percent)
+		rs = append(rs, r)
+	}
+	return &model.Statistics{Ratios: rs}, nil
 }

@@ -49,5 +49,8 @@ type PaymentRepo interface {
 	AcceptPayment(a *model.Accept) error
 	DeclinePayment(statusID int) error
 
+	FindHistory(userID int) (*model.HistoryShowAll, error)
+	FindStatistics(userID int, t bool) (*model.Statistics, error)
+
 	FindCategoryName(statusID int) (categoryName string, err error)
 }

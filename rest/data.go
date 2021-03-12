@@ -105,10 +105,10 @@ func (a *App) addLoans() {
 	_ = a.Payment.GiveLoan(&model.TransferLoan{
 		DebtCategoryID:    6,
 		RepayCategoryName: "repay",
-		Transfer:          model.Transfer{
+		Transfer: model.Transfer{
 			CreditorID:     1,
 			LoanCategoryID: 1,
-			Loan:           model.Loan{
+			Loan: model.Loan{
 				DebtorID:    4,
 				Amount:      30,
 				Description: "Bills",

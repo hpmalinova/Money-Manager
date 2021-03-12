@@ -7,19 +7,6 @@ type Pay struct {
 	Description  string `json:"description,omitempty"`
 }
 
-//type Transfer struct {
-//	CreditorID int    `json:"debtorID" validate:"numeric,gte=0"`
-//	LoanID     int    `json:"loanID" validate:"numeric,gte=0"`
-//	DebtID     int    `json:"debtID" validate:"numeric,gte=0"`
-//	DebtName   string `json:"debtName" validate:"required,min=3,max=32"`
-//	Loan
-//}
-//
-//type TransferLoan struct {
-//	RepayID int `json:"repayID" validate:"numeric,gte=0"`
-//	Transfer
-//}
-
 type TransferLoan struct {
 	DebtCategoryID    int    `json:"debtCategoryID" validate:"numeric,gte=0"`
 	RepayCategoryName string `json:"repayCategoryName" validate:"required,min=3,max=32"`
@@ -80,6 +67,26 @@ type History struct {
 	Amount      int    `json:"amount" validate:"numeric,gte=0"`
 	CategoryID  int    `json:"categoryID" validate:"numeric,gte=0"`
 	Description string `json:"description,omitempty"`
+}
+
+type HistoryShow struct {
+	Amount       int
+	CategoryName string
+	CategoryType string
+	Description  string
+}
+
+type HistoryShowAll struct {
+	HistoryShowAll []HistoryShow
+}
+
+type Statistics struct {
+	Ratios []Ratio
+}
+
+type Ratio struct {
+	Percent      string
+	CategoryName string
 }
 
 type Accept struct {
