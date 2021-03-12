@@ -69,6 +69,13 @@ type History struct {
 	Description string `json:"description,omitempty"`
 }
 
+type HistoryAndStatistics struct {
+	HistoryShowAll
+	Expense Statistics
+	Income Statistics
+}
+
+
 type HistoryShow struct {
 	Amount       int
 	CategoryName string

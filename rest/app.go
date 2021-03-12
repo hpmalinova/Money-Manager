@@ -784,6 +784,26 @@ func (a *App) getHistory(w http.ResponseWriter, r *http.Request){
 		}
 	}
 
-	a.Template.ExecuteTemplate(w, history, h)
+	// Statistics:
+	exp, err :=	a.Payment.FindStatistics(userID, true)
+	if err != nil {
+		msg := fmt.Sprintf("Error getting expense statistics: %v", err.Error())
+		respondWithError(w, http.StatusInternalServerError, msg)
+		return
+	}
+	inc, err :=	a.Payment.FindStatistics(userID, false)
+	if err != nil {
+		msg := fmt.Sprintf("Error getting income statistics: %v", err.Error())
+		respondWithError(w, http.StatusInternalServerError, msg)
+		return
+	}
+
+	hs := model.HistoryAndStatistics{
+		HistoryShowAll: *h,
+		Expense:     *exp,
+		Income: *inc,
+	}
+
+	a.Template.ExecuteTemplate(w, history, hs)
 }
 

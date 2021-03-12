@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/hpmalinova/Money-Manager/model"
 	"log"
-	"math"
 	"time"
 )
 
@@ -616,7 +615,7 @@ func (p *PaymentRepoMysql) FindHistory(userID int) (*model.HistoryShowAll, error
 
 // t: true == "expense" or false == "income"
 func (p *PaymentRepoMysql) FindStatistics(userID int, t bool) (*model.Statistics, error) {
-	statement := `SELECT SUM(amount) 
+	statement := `SELECT COALESCE(SUM(amount),0)
 					FROM money_history as m
 					JOIN categories as c 
 						ON m.category_id=c.id
@@ -637,7 +636,7 @@ func (p *PaymentRepoMysql) FindStatistics(userID int, t bool) (*model.Statistics
 		rs := []model.Ratio{}
 		r := model.Ratio{
 			Percent:      "0",
-			CategoryName: "No "+cType+"s!",
+			CategoryName: "No "+cType+"s",
 		}
 		rs = append(rs, r)
 		return &model.Statistics{Ratios: rs}, nil
@@ -662,7 +661,7 @@ func (p *PaymentRepoMysql) FindStatistics(userID int, t bool) (*model.Statistics
 		if err != nil {
 			return nil, err
 		}
-		percent := math.Round(float64(s) / float64(sum))
+		percent := float64(s) / float64(sum)
 		r.Percent = fmt.Sprintf("%.2f", percent)
 		rs = append(rs, r)
 	}
