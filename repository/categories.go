@@ -28,12 +28,15 @@ func NewCategoryRepoMysql(user, password, dbname string) *CategoryRepoMysql {
 	return repo
 }
 
+func (c *CategoryRepoMysql) Close() {
+	_ = c.db.Close()
+}
+
 func (c *CategoryRepoMysql) FindByName(categoryName string) (*model.Category, error) {
 	category := &model.Category{}
 	statement := `SELECT id, c_type, name FROM categories WHERE name = ?`
 	err := c.db.QueryRow(statement, categoryName).Scan(&category.ID, &category.CType, &category.Name)
 	if err != nil {
-		fmt.Println("IN REPO", categoryName, category)
 		return nil, err
 	}
 	return category, nil
@@ -42,26 +45,6 @@ func (c *CategoryRepoMysql) FindByName(categoryName string) (*model.Category, er
 func (c *CategoryRepoMysql) FindExpenses() ([]model.Category, error) {
 	statement := `SELECT id, c_type, name FROM categories WHERE c_type = ?`
 	return c.findByType(statement, expense)
-	//rows, err := c.db.Query(statement)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//defer rows.Close()
-	//
-	//categories := []model.Category{}
-	//for rows.Next() {
-	//	var category model.Category
-	//	err := rows.Scan(&category.ID, &category.CType, &category.Name)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	categories = append(categories, category)
-	//}
-	//rows.Close()
-	//if err = rows.Err(); err != nil {
-	//	return nil, err
-	//}
-	//return categories, nil
 }
 
 func (c *CategoryRepoMysql) FindIncomes() ([]model.Category, error) {
@@ -85,7 +68,7 @@ func (c *CategoryRepoMysql) findByType(statement string, cType string) ([]model.
 		}
 		categories = append(categories, category)
 	}
-	rows.Close()
+	_ = rows.Close()
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
@@ -110,7 +93,7 @@ func (c *CategoryRepoMysql) FindAll() ([]model.Category, error) {
 		}
 		categories = append(categories, category)
 	}
-	rows.Close()
+	_ = rows.Close()
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
