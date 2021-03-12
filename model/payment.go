@@ -21,7 +21,6 @@ type Debt struct {
 	Description string `json:"description,omitempty"`
 }
 
-// I've taken 50lv from George for "Happy"
 type DebtExt struct {
 	StatusID     int    `json:"statusID" validate:"numeric,gte=0"`
 	CategoryName string `json:"categoryName" validate:"required,min=3,max=32"`
@@ -77,6 +76,6 @@ type AcceptPayment struct {
 
 type Status struct {
 	StatusID      int    `json:"statusID" validate:"numeric,gte=0"`
-	Status        string `json:"status"` //todo expense/income
+	Status        string `json:"status"`
 	PendingAmount int    `json:"pendingAmount" validate:"numeric,gte=0"`
 }
