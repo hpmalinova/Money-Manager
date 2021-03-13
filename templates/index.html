@@ -12,23 +12,28 @@
 <body>
 <h1>Hello, {{.Username}}.</h1>
 <h3>You have {{.Balance}}lv.</h3>
-<form method="GET" action="/index/earn">
+<section style="margin-bottom: 10px;">
+<form method="GET" action="/index/earn" style="display: inline">
     <input type="submit" value="+" />
 </form>
-<form method="GET" action="/index/pay">
+<form method="GET" action="/index/pay" style="display: inline">
     <input type="submit" value="-" />
 </form>
+</section>
 
-<form method="GET" action="/index/users">
+<section style="margin-bottom: 10px;">
+<form method="GET" action="/index/users" style="margin-bottom: 5px; margin-top: 5px; display: inline">
     <input type="submit" value="Users" />
 </form>
-<form method="GET" action="/index/friends">
+<form method="GET" action="/index/friends" style="margin-bottom: 5px; display: inline";>
     <input type="submit" value="Friends" />
 </form>
-<form method="GET" action="/index/history">
+<form method="GET" action="/index/history" style="margin-bottom: 5px; display: inline";>
     <input type="submit" value="History" />
 </form>
-<form method="POST" action="/index/logout">
+</section>
+
+<form method="POST" action="/index/logout" style="margin-bottom: 5px";>
     <input type="submit" value="Logout" />
 </form>
 </body>

@@ -13,11 +13,11 @@
                 {{range .PendingFriends.Usernames}}
                     <li>
                         <div class="friend">
-                            <p class="username">{{.}}</p>
-                            <form method="POST" action="/index/friends/accept/{{.}}">
+                            <p class="username" style="display: inline">{{.}}</p>
+                            <form method="POST" action="/index/friends/accept/{{.}}" style="display: inline">
                                 <input type="submit" value="Accept" />
                             </form>
-                            <form method="POST" action="/index/friends/decline/{{.}}">
+                            <form method="POST" action="/index/friends/decline/{{.}}" style="display: inline">
                                 <input type="submit" value="Decline" />
                             </form>
                         </div>
@@ -28,18 +28,21 @@
             <h4>You have no pending requests!</h4>
         {{end}}
 
-        <h3>Add friend:</h3>
+        <h3>Add a friend:</h3>
         <form method="POST" action="/index/friends/add">
             <input name="username" type="text" value="" placeholder="Friend`s name:" />
             <input type="submit" value="Add Friend" />
         </form>
 
-        <form method="GET" action="/index/debts">
+        <section style="margin-top: 15px">
+            <h3>Show:</h3>
+            <form method="GET" action="/index/debts" style="display: inline">
             <input type="submit" value="Show Debts" />
         </form>
-        <form method="GET" action="/index/loans">
+        <form method="GET" action="/index/loans" style="display: inline">
             <input type="submit" value="Show Loans" />
         </form>
+        </section>
 
         <h3>All friends: </h3>
         {{if .Friends.Usernames}}

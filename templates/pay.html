@@ -10,7 +10,8 @@
 
     <body>
     <h3>You have {{.Balance}}lv.</h3>
-        <div class="pay">
+        <section class="pay" style="margin-bottom: 15px;">
+            <h4 style="margin-bottom: 5px; margin-top: 5px; display: inline">Pay: </h4>
             <form method="POST" action="/index/pay">
                 <label>Amount: </label><input name="amount" type="number" value="" min="1" max="{{.Balance}}" required/>
                 <label>Category: </label>
@@ -22,8 +23,9 @@
                 <label>Description: </label><input name="description" type="text" value=""/>
                 <input type="submit" value="Pay" />
             </form>
-        </div>
-        <div class="loan">
+        </section>
+        <section class="loan" style="margin-bottom: 15px;">
+            <h4 style="margin-bottom: 5px; margin-top: 5px; display: inline">Give loan to: </h4>
             <form method="POST" action="/index/loan">
                 <label>Friend`s name: </label>
                 <select name="to" id="to">
@@ -33,10 +35,11 @@
                 </select>
                 <label>Amount: </label><input name="amount" type="number" value="" min="1" max="{{.Balance}}" required/>
                 <label>Description: </label><input name="description" type="text" value=""/>
-                <input type="submit" value="Pay" />
+                <input type="submit" value="Give" />
             </form>
-        </div>
-        <div class="split">
+        </section>
+        <section class="split" style="margin-bottom: 15px;">
+            <h4 style="margin-bottom: 5px; margin-top: 5px; display: inline">Split: </h4>
             <form method="POST" action="/index/split">
                 <label>Friend`s name: </label>
                 <select name="to" id="to">
@@ -52,9 +55,9 @@
                     {{end}}
                 </select>
                 <label>Description: </label><input name="description" type="text" value=""/>
-                <input type="submit" value="Pay" />
+                <input type="submit" value="Split" />
             </form>
-    </div>
+    </section>
     <form method="GET" action="/index">
         <input type="submit" value="Back" />
     </form>

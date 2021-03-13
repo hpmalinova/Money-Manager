@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	fmt.Println("Staring REST User Service ...")
+	fmt.Println("Staring Service ...")
 
 	err := godotenv.Load()
 	if err != nil {
